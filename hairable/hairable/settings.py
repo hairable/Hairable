@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     'staff',
     'sales',
     'reports',
-    'securitybot',
+    'secretarybot',
 ]
 
 MIDDLEWARE = [
