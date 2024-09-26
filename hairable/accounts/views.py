@@ -1,13 +1,11 @@
-from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny
-from rest_framework_simplejwt.exceptions import TokenError
 from .models import User
 from .validators import validate_user_data
 from .serializers import UserSerializer, UserProfileSerializer
+from rest_framework import generics
 # Create your views here.
 
 
@@ -47,4 +45,19 @@ class UserProfileView(APIView):
         serializer = UserProfileSerializer(user)
         return Response(serializer.data)
 
+
+class UserList(generics.ListCreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]
+    def list(self, request):
+
+        queryset = self.get_queryset()
+        serializer = UserSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class UserDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 

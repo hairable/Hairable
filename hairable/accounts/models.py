@@ -17,3 +17,4 @@ class User(AbstractUser):
     )
     introduction = models.TextField(null=True, blank=True)
 
+
