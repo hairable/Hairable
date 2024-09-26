@@ -1,10 +1,10 @@
-from django.shortcuts import render
-
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth import authenticate
 # Create your views here.
 User = get_user_model()
@@ -16,7 +16,7 @@ class LoginAPIView(APIView):
         username = request.data.get('username')
         password = request.data.get('password')
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
             refresh = RefreshToken.for_user(user)
             return Response({
@@ -40,3 +40,33 @@ class ResetPasswordAPIView(APIView):
     def post(self, request):
         # 비밀번호 재설정 로직 작성 (이메일 전송 등)
         return Response({'message': '비밀번호 재설정 링크가 이메일로 전송되었습니다.'}, status=status.HTTP_200_OK)
+
+# 회원 계정 정보 수정
+class EditAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        user = request.user
+
+        email = request.data.get('email')
+        phone = request.data.get('phone')
+        password = request.data.get('password')
+
+        if email:
+            user.email = email
+        if phone:
+            user.phone = phone
+        if password:
+            user.password = make_password(password)
+
+        user.save()
+        return Response({"message": "프로필이 성공적으로 업데이트되었습니다."}, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        password = request.data.get("password")
+        if not request.user.check_password(password):
+            return Response({"message": "비밀번호를 다시 입력해주세요."}, status=400)
+
+        request.user.is_active = False
+        request.user.save()
+        return Response({"message": "계정이 성공적으로 탈퇴되었습니다."}, status=204)
