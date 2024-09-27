@@ -42,11 +42,11 @@ class ResetPasswordAPIView(APIView):
         return Response({'message': '비밀번호 재설정 링크가 이메일로 전송되었습니다.'}, status=status.HTTP_200_OK)
 
 # 회원 계정 정보 수정
-class EditAPIView(APIView):
+class AccEditAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request):
-        user = request.user
+    def put(self, request, username):
+        user = User.objects.get(username=username)
 
         email = request.data.get('email')
         phone = request.data.get('phone')
@@ -60,7 +60,7 @@ class EditAPIView(APIView):
             user.password = make_password(password)
 
         user.save()
-        return Response({"message": "프로필이 성공적으로 업데이트되었습니다."}, status=status.HTTP_200_OK)
+        return Response({"message": "계정 정보 수정이 완료되었습니다."}, status=status.HTTP_200_OK)
 
     def delete(self, request):
         password = request.data.get("password")
@@ -70,3 +70,27 @@ class EditAPIView(APIView):
         request.user.is_active = False
         request.user.save()
         return Response({"message": "계정이 성공적으로 탈퇴되었습니다."}, status=204)
+
+# 프로필 정보 수정
+class ProfileEditAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def put(self, request, username):
+        user = User.objects.get(username=username)
+
+        new_username = request.data.get('username')
+        image = request.FILES.get('image')
+        introduction = request.data.get('introduction')
+        signature_service = request.data.get('signature_service')
+
+        if new_username:
+            user.username = new_username
+        if image:
+            user.image = image
+        if introduction:
+            user.introduction = introduction
+        if signature_service:
+            user.signature_service = signature_service
+
+        user.save()
+        return Response({"message": "프로필이 성공적으로 업데이트되었습니다."}, status=status.HTTP_200_OK)
