@@ -6,7 +6,5 @@ urlpatterns = [
     path('reset-password/', views.ResetPasswordAPIView.as_view(), name='reset-password'),
     path('acc_edit/<str:username>/', views.AccEditAPIView.as_view(), name='acc_edit'),
     path('profile_edit/<str:username>/', views.ProfileEditAPIView.as_view(), name='profile_edit'),
-    path('acc_edit/<str:username>/', views.AccEditAPIView.as_view(), name='acc_edit'),
-    path('profile_edit/<str:username>/', views.ProfileEditAPIView.as_view(), name='profile_edit'),
 ]
 
