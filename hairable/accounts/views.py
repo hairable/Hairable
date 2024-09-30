@@ -4,9 +4,39 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserSerializer, UserDetailSerializer
+from rest_framework import generics
+from django.contrib.auth.hashers import make_password
 # Create your views here.
 User = get_user_model()
 
+# GET: 회원 목록 조회, POST: 회원 가입
+class UserListCreateView(generics.ListCreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+        response_data = serializer.data
+        response_data["access"] = str(refresh.access_token)
+        response_data["refresh"] = str(refresh)
+        return Response(response_data, status=201)
+
+# 자신의 프로필 Profile 조회(GET) 및 수정(PUT)
+class ProfileAPIView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserDetailSerializer
+    
+    def get_object(self):
+        return self.request.user
+
+# 다른 사용자의 프로필 조회 
+class ProfileAPIView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserDetailSerializer
+    permission_classes = [IsAuthenticated]  # 로그인된 회원만 접근 가능
 
 # 로그인 API
 class LoginAPIView(APIView):
@@ -38,3 +68,15 @@ class ResetPasswordAPIView(APIView):
     def post(self, request):
         # 비밀번호 재설정 로직 작성 (이메일 전송 등)
         return Response({'message': '비밀번호 재설정 링크가 이메일로 전송되었습니다.'}, status=status.HTTP_200_OK)
+    
+class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh')
+            token = RefreshToken(refresh_token)
+            token.blacklist()  # 토큰을 블랙리스트에 추가하여 무효화
+            return Response({"message": "성공적으로 로그아웃되었습니다."}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({"error": "로그아웃 실패. 유효하지 않은 토큰입니다."}, status=status.HTTP_400_BAD_REQUEST)

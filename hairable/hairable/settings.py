@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 from . import config
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -45,7 +46,6 @@ INSTALLED_APPS = [
     'django_seed',
     #local_apps
     'accounts',
-    'appointments',
     'inventory',
 ]
 
@@ -141,12 +141,7 @@ REST_FRAMEWORK = {
     ],
     # 페이징 기본 설정
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 10, 
-    # 쓰로틀 설정
-    'DEFAULT_THROTTLE_CLASSES': [],
-    'DEFAULT_THROTTLE_RATES': {
-        'update': '1/day',
-    },
+    "PAGE_SIZE": 10,
 }
 
 
