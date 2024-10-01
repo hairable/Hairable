@@ -12,7 +12,7 @@ def send_verification_email(user, request):
     
     # 인증 링크 생성
     verification_link = request.build_absolute_uri(
-        reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
+        reverse('accounts:verify_email', kwargs={'uidb64': uid, 'token': token})
     )
     
     # 이메일 보내기

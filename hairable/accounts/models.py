@@ -12,6 +12,11 @@ class User(AbstractUser):
     birthday = models.DateField()
     gender = models.CharField(max_length=1, choices=gender_choices, null=True, blank=True)
     introduction = models.TextField(null=True, blank=True)
+    ROLE_CHOICES = (
+        ('CEO', '대표'),
+        ('user', '일반회원'),
+    )
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES)
 
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')

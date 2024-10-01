@@ -31,7 +31,9 @@ class UserListCreateView(generics.ListCreateAPIView):
 
         # 토큰 생성
         refresh = RefreshToken.for_user(user)
-        response_data = serializer.data
+
+        # 기존 직렬화된 데이터를 수정 가능한 딕셔너리로 변환
+        response_data = dict(serializer.data)
         response_data["access"] = str(refresh.access_token)
         response_data["refresh"] = str(refresh)
 
@@ -202,14 +204,23 @@ class LogoutAPIView(APIView):
 @api_view(['GET'])
 def verify_email(request, uidb64, token):
     try:
-        uid = urlsafe_base64_decode(uidb64).decode()
+        # uidb64를 디코딩하여 사용자의 pk 가져오기
+        uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
+        
+        verification_link = request.build_absolute_uri(
+        reverse('accounts:verify_email', kwargs={'uidb64': uid, 'token': token})
+    )
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
-    
+
     if user is not None and default_token_generator.check_token(user, token):
-        user.is_active = True  # 인증이 완료 되면, 계정 활성화
-        user.save()
-        return Response({'message': '이메일 인증이 완료되었습니다.'}, status=status.HTTP_200_OK)
+        if not user.is_active:
+            # 계정 활성화 처리
+            user.is_active = True
+            user.save()
+            return Response({'message': '이메일 인증이 완료되었습니다.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': '계정이 이미 활성화되었습니다.'}, status=status.HTTP_200_OK)
     else:
         return Response({'error': '유효하지 않은 링크입니다.'}, status=status.HTTP_400_BAD_REQUEST)

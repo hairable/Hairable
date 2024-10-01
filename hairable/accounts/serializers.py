@@ -7,7 +7,7 @@ from .models import User, Profile
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("username", "email", "password", "phone", "birthday", "gender", "introduction")
+        fields = ("username", "email", "password", "phone", "birthday", "gender", "introduction", "role")
         extra_kwargs = {
             'password': {'write_only': True}  # 비밀번호는 작성 시에만 사용하고, 응답에는 포함되지 않도록 설정.
         }
@@ -22,6 +22,7 @@ class UserSerializer(serializers.ModelSerializer):
             gender=validated_data.get('gender'),
             introduction=validated_data.get('introduction'),
             is_active=False,  # 계정을 비활성화 상태로 저장
+            role=validated_data.get('role'),
         )
         return user
 
