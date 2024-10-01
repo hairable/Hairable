@@ -4,9 +4,76 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserSerializer, UserDetailSerializer, ResetPasswordEmailRequestSerializer, ResetPasswordConfirmSerializer, ChangePasswordSerializer
+from rest_framework import generics
+from django.core.mail import send_mail
+from django.urls import reverse
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator # 이메일 인증을 위한 토큰 생성
+from .utils import send_verification_email
+from rest_framework.decorators import api_view
+from rest_framework.decorators import permission_classes
+from django.utils.encoding import force_str
+import re
 # Create your views here.
 User = get_user_model()
 
+# GET: 회원 목록 조회, POST: 회원 가입
+class UserListCreateView(generics.ListCreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        send_verification_email(user, self.request)  # 이메일 인증 링크 전송
+
+        # 토큰 생성
+        refresh = RefreshToken.for_user(user)
+        response_data = serializer.data
+        response_data["access"] = str(refresh.access_token)
+        response_data["refresh"] = str(refresh)
+
+        return Response(response_data, status=201)
+
+class UserUpdateDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    # 회원 정보 수정 (PUT)
+    def put(self, request, *args, **kwargs):
+        user = self.get_object()
+        serializer = UserDetailSerializer(user, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "회원 정보가 성공적으로 수정되었습니다."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # 회원 탈퇴 (DELETE)
+    def delete(self, request, *args, **kwargs):
+        user = self.get_object()
+        user.is_active = False  # 계정 비활성화
+        user.save()
+        return Response({"message": "회원탈퇴가 완료되었습니다."}, status=status.HTTP_204_NO_CONTENT)
+    
+    
+# 자신의 프로필 Profile 조회(GET) 및 수정(PUT)
+class ProfileAPIView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserDetailSerializer
+    
+    def get_object(self):
+        return self.request.user
+
+# 다른 사용자의 프로필 조회 
+class UserProfileAPIView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserDetailSerializer
+    permission_classes = [IsAuthenticated]  # 로그인된 회원만 접근 가능
 
 # 로그인 API
 class LoginAPIView(APIView):
@@ -28,13 +95,121 @@ class LoginAPIView(APIView):
 class FindUsernameAPIView(APIView):
     def post(self, request):
         email = request.data.get('email')
-        try:
+
+        if not email: 
+            return Response({'message': '이메일을 입력해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try: 
             user = User.objects.get(email=email)
-            return Response({'username': user.username}, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
-            return Response({'error': '등록된 이메일이 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
-# 비밀번호 찾기
+            # 이메일로 사용자 아이디 전송
+            send_mail(
+                'Hairable 아이디 찾기',
+                f'당신의 아이디는 {user.username}입니다.',
+                'latiger95@gmail.com',  # 발신자 이메일
+                [email],
+                fail_silently=False,
+            )
+            return Response({'message': '아이디 찾기 요청이 처리되었습니다. 이메일을 확인해주세요.'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist: 
+            return Response({'message': '등록된 이메일이 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+    
+# POST: 분실시 비밀번호 이메일 인증 요청, PUT: 인증 완료 후 새 비밀번호로 변경
 class ResetPasswordAPIView(APIView):
+
+    # 이메일로 비밀번호 재설정 링크 전송 (POST 요청)
     def post(self, request):
-        # 비밀번호 재설정 로직 작성 (이메일 전송 등)
-        return Response({'message': '비밀번호 재설정 링크가 이메일로 전송되었습니다.'}, status=status.HTTP_200_OK)
+        serializer = ResetPasswordEmailRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            try:
+                user = User.objects.get(email=email)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                token = default_token_generator.make_token(user)
+                reset_link = request.build_absolute_uri(
+                    reverse('accounts:password_reset_confirm', kwargs={'uidb64': uid, 'token': token})  # 네임스페이스 추가
+                )
+                send_mail(
+                    '비밀번호 재설정',  
+                    f'링크를 클릭하여 비밀번호를 재설정 하세요: {reset_link}',  
+                    'latiger95@gmail.com',  
+                    [email],  
+                    fail_silently=False
+                )
+                return Response({'message': '비밀번호 재설정 링크가 이메일로 전송되었습니다.'}, status=status.HTTP_200_OK)
+            except User.DoesNotExist:
+                return Response({'message': '등록된 이메일이 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # 이메일 인증을 통한 비밀번호 재설정 (PUT 요청)
+    def put(self, request, uidb64, token):
+        new_password = request.data.get('new_password')
+
+        if not new_password:
+            return Response({'message': '새로운 비밀번호가 필요합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({'message': '유효하지 않은 사용자입니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 토큰 확인
+        if default_token_generator.check_token(user, token):
+            # 비밀번호 검증 및 설정
+            if len(new_password) < 8 or not re.search(r'[0-9]', new_password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', new_password):
+                return Response({'message': '비밀번호는 최소 8자 이상이어야 하며, 숫자와 특수 문자를 포함해야 합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            user.set_password(new_password)
+            user.save()
+            return Response({'message': '비밀번호가 성공적으로 재설정되었습니다.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': '유효하지 않은 토큰입니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ChangePasswordAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = request.user
+            old_password = serializer.validated_data['old_password']
+            new_password = serializer.validated_data['new_password']
+
+            if not user.check_password(old_password):
+                return Response({'message': '기존 비밀번호가 올바르지 않습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.set_password(new_password)
+            user.save()
+            return Response({'message': '비밀번호가 성공적으로 변경되었습니다.'}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        try:
+            refresh_token = request.data.get('refresh')
+            token = RefreshToken(refresh_token)
+            token.blacklist()  # 토큰을 블랙리스트에 추가하여 무효화
+            return Response({"message": "성공적으로 로그아웃되었습니다."}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({"error": "로그아웃 실패. 유효하지 않은 토큰입니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def verify_email(request, uidb64, token):
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True  # 인증이 완료 되면, 계정 활성화
+        user.save()
+        return Response({'message': '이메일 인증이 완료되었습니다.'}, status=status.HTTP_200_OK)
+    else:
+        return Response({'error': '유효하지 않은 링크입니다.'}, status=status.HTTP_400_BAD_REQUEST)

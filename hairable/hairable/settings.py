@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 from . import config
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -45,7 +46,6 @@ INSTALLED_APPS = [
     'django_seed',
     #local_apps
     'accounts',
-    # 'appointments',
     'inventory',
 ]
 
@@ -85,11 +85,14 @@ WSGI_APPLICATION = 'hairable.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'hairable',  
+        'USER': 'hairable_dev1',     
+        'PASSWORD': config.MYSQL_PASSWORD,   
+        'HOST': 'localhost',           
+        'PORT': '3306',                
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -141,12 +144,7 @@ REST_FRAMEWORK = {
     ],
     # 페이징 기본 설정
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 10, 
-    # 쓰로틀 설정
-    'DEFAULT_THROTTLE_CLASSES': [],
-    'DEFAULT_THROTTLE_RATES': {
-        'update': '1/day',
-    },
+    "PAGE_SIZE": 10,
 }
 
 
@@ -156,3 +154,12 @@ SIMPLE_JWT = {
 'ROTATE_REFRESH_TOKENS': True,
 'BLACKLIST_AFTER_ROTATION': True,
 }
+
+# 이메일 서버 설정
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # SMTP 서버 주소
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config.EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = config.EMAIL_HOST_PASSWORD
+DEFAULT_FROM_EMAIL = config.EMAIL_HOST_USER
