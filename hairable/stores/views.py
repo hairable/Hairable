@@ -17,12 +17,12 @@ class StoreCreateView(generics.CreateAPIView):
 class StoreListView(generics.ListAPIView):
     queryset = Store.objects.all()
     serializer_class = StoreSerializer
-    permission_classes = [IsAuthenticated, IsCEO]
+
 
 class StoreDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Store.objects.all()
     serializer_class = StoreSerializer
-    permission_classes = [IsAuthenticated, IsCEO]
+
 
 class AddStaffView(generics.CreateAPIView):
     queryset = StoreStaff.objects.all()
