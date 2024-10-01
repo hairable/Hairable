@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django_seed',
     #local_apps
     'accounts',
-    'appointments',
+    # 'appointments',
     'inventory',
 ]
 
