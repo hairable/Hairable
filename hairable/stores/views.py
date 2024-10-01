@@ -3,15 +3,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Store, StoreStaff
 from .serializers import StoreSerializer, StoreStaffSerializer
-from accounts.permissions import IsCEO
+from accounts.permissions import IsCEO, IsAnyCEO
 
 class StoreCreateView(generics.CreateAPIView):
     queryset = Store.objects.all()
     serializer_class = StoreSerializer
-    permission_classes = [IsAuthenticated, IsCEO]
+    permission_classes = [IsAuthenticated, IsAnyCEO]
 
     def perform_create(self, serializer):
-        # 로그인한 사용자를 ceo로 설정
         serializer.save(ceo=self.request.user)
 
 class StoreListView(generics.ListAPIView):
@@ -23,6 +22,19 @@ class StoreDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Store.objects.all()
     serializer_class = StoreSerializer
 
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'DELETE']:
+            return [IsAuthenticated(), IsCEO()]
+        return []  # 다른 메서드(GET 등)는 permission_classes 없이 허용
+
+    def update(self, request, *args, **kwargs):
+        partial = True 
+        return super().update(request, *args, partial=partial, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response({'message': '스토어가 성공적으로 삭제되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
 
 class AddStaffView(generics.CreateAPIView):
     queryset = StoreStaff.objects.all()
