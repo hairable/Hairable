@@ -21,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
             birthday=validated_data.get('birthday'),
             gender=validated_data.get('gender'),
             introduction=validated_data.get('introduction'),
+            is_active=False,  # 계정을 비활성화 상태로 저장
         )
         return user
 
@@ -54,16 +55,36 @@ class UserDetailSerializer(serializers.ModelSerializer):
         profile.save()
         
         return instance
-        
+
+# 비밀번호 재설정 이메일 요청
+class ResetPasswordEmailRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("등록된 이메일이 없습니다.")
+        return value
     
-class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True, write_only=True)
-    new_password = serializers.CharField(required=True, write_only=True)
+# 비밀번호 재설정을 처리
+class ResetPasswordConfirmSerializer(serializers.Serializer):
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)
 
     def validate_new_password(self, value):
         if len(value) < 8 or not re.search(r'[0-9]', value) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
-            raise ValidationError("비밀번호는 최소 8자 이상이어야 하며, 숫자와 특수 문자를 포함해야 합니다.")
+            raise serializers.ValidationError("비밀번호는 최소 8자 이상이어야 하며, 숫자와 특수 문자를 포함해야 합니다.")
         return value
+# 비밀 번호 변경
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        if len(value) < 8 or not re.search(r'[0-9]', value) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
+            raise serializers.ValidationError("비밀번호는 최소 8자 이상이어야 하며, 숫자와 특수 문자를 포함해야 합니다.")
+        return value
+
     
 
 class LoginSerializer(serializers.Serializer):
