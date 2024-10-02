@@ -18,6 +18,23 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
         if category_id is not None:
             queryset = queryset.filter(category_id=category_id)
         return queryset
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        category_id = request.data.get('category')
+        if not category_id:
+            return Response({"error": "Category is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            category = Category.objects.get(id=category_id)
+        except Category.DoesNotExist:
+            return Response({"error": "Invalid category ID"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer.save(category=category)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=True, methods=['patch'])
     def update_field(self, request, pk=None):

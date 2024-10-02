@@ -22,9 +22,7 @@ class InventoryItemDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'category', 'category_name', 'name', 'image', 'purchase_price', 'selling_price', 
                   'usage', 'stock', 'safety_stock', 'stock_value', 'storage_location', 
                   'usage_instructions', 'precautions']
-        read_only_fields = ['id', 'category', 'category_name', 'name', 'image', 'purchase_price', 'selling_price', 
-                            'usage', 'stock', 'safety_stock', 'stock_value', 'storage_location', 
-                            'usage_instructions', 'precautions']
+        read_only_fields = ['id', 'category_name']  # category를 read_only_fields에서 제거
 
 class InventoryItemUpdateSerializer(serializers.ModelSerializer):
     class Meta:
