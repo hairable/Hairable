@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'accounts',
     'inventory',
     'stores',
+    'service',
+    'supplier',
 ]
 
 MIDDLEWARE = [
@@ -88,7 +90,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hairable',  
-        'USER': 'hairable_dev1',     
+        'USER': 'root',     
         'PASSWORD': config.MYSQL_PASSWORD,   
         'HOST': 'localhost',           
         'PORT': '3306',                

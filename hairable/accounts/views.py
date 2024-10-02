@@ -14,7 +14,6 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator # 이메일 인증을 위한 토큰 생성
 from .utils import send_verification_email
 from rest_framework.decorators import api_view
-from rest_framework.decorators import permission_classes
 from django.utils.encoding import force_str
 import re
 # Create your views here.
