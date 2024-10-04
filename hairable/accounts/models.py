@@ -5,8 +5,8 @@ from django.conf import settings
 
 class User(AbstractUser):
     gender_choices = [("M", "남성"), ("F", "여성")]
-    username = models.CharField(max_length=10, unique=True)
-    email = models.EmailField(unique=True)
+    username = models.CharField(max_length=30, unique=True)
+    email = models.EmailField() # unique=True 테스트가 끝나면 넣어둘것
     phoneNumberRegex = RegexValidator(regex=r'^01[016789]-?\d{3,4}-?\d{4}$', message="유효한 한국 전화번호를 입력하세요.")
     phone = models.CharField(validators=[phoneNumberRegex], max_length=16, unique=True)
     birthday = models.DateField()
@@ -22,5 +22,8 @@ class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     store = models.CharField(max_length=100, blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile_images/', default='images/default_imgage.jpg')
-    introduction = models.TextField(null=True, blank=True)
+    introduction = models.TextField(null=True, blank=True) # 자기소개
     specialty = models.CharField(max_length=100, blank=True, null=True) # 가장 자신있는 시술
+    work_status = models.BooleanField(default=True)  # 근무 상태
+    career_list = models.JSONField(default=list, blank=True)  # 경력 목록
+    certificate_list = models.JSONField(default=list, blank=True)  # 자격증 목록

@@ -1,25 +1,52 @@
 from rest_framework import serializers
-from .models import Store, StoreStaff
+from .models import Store, StoreStaff, WorkCalendar, ManagementCalendar
 
 
-# 매장 이름 중복 방지
+class StoreStaffSerializer(serializers.ModelSerializer):
+    store_name = serializers.CharField(source='store.name', read_only=True)
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = StoreStaff
+        fields = ['id', 'store_name', 'user_name', 'role', 'phone', 'date_joined']
+        
+        
 class StoreSerializer(serializers.ModelSerializer):
-    ceo_name = serializers.CharField(source='ceo.username', read_only=True)  # CEO의 username을 가져오는 필드
+    ceo_name = serializers.CharField(source='ceo.username', read_only=True)
+    staff = StoreStaffSerializer(source='store_staff', many=True, read_only=True)  # store_staff 역참조 사용
 
     class Meta:
         model = Store
-        fields = ['id', 'name', 'ceo', 'ceo_name', 'staff']  # 필요한 필드만 명시적으로 나열
-        extra_kwargs = {
-            'ceo': {'required': False}  # ceo 필드를 선택적 필드로 변경
-        }
+        fields = ['id', 'name', 'ceo_name', 'staff']
 
-    def validate_name(self, value):
-        if Store.objects.filter(name=value).exists():
-            raise serializers.ValidationError("이 이름은 이미 사용 중입니다.")
-        return value
 
-class StoreStaffSerializer(serializers.ModelSerializer):
+class WorkCalendarSerializer(serializers.ModelSerializer):
     class Meta:
-        model = StoreStaff
-        fields = '__all__'
-        
+        model = WorkCalendar
+        fields = ['staff_id', 'store_id', 'date', 'start_time', 'end_time', 'status']
+
+    def create(self, validated_data):
+        # WorkCalendar 생성 시 ManagementCalendar 업데이트
+        work_calendar = WorkCalendar.objects.create(**validated_data)
+
+        # ManagementCalendar 업데이트
+        management_calendar, created = ManagementCalendar.objects.get_or_create(store=work_calendar.store, date=work_calendar.date)
+        management_calendar.update_calendar()
+
+        return work_calendar
+
+    def update(self, instance, validated_data):
+        # WorkCalendar 업데이트 시 ManagementCalendar 업데이트
+        instance.status = validated_data.get('status', instance.status)
+        instance.save()
+
+        # ManagementCalendar 업데이트
+        management_calendar, created = ManagementCalendar.objects.get_or_create(store=instance.store, date=instance.date)
+        management_calendar.update_calendar()
+
+        return instance
+
+class ManagementCalendarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ManagementCalendar
+        fields = ['store', 'date', 'total_working', 'total_off', 'total_substitute']
