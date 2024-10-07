@@ -5,6 +5,7 @@ from .models import Store, StoreStaff, WorkCalendar, ManagementCalendar
 from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer, ManagementCalendarSerializer
 from accounts.permissions import IsCEO, IsAnyCEO
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404  # 주석: get_object_or_404 추가
 
 User = get_user_model()
 

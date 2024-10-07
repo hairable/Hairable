@@ -50,3 +50,5 @@ class ManagementCalendarSerializer(serializers.ModelSerializer):
     class Meta:
         model = ManagementCalendar
         fields = ['store', 'date', 'total_working', 'total_off', 'total_substitute']
+        read_only_fields = ['total_working', 'total_off', 'total_substitute'] # 주석: read_only_fields 추가
+        
