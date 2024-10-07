@@ -5,7 +5,7 @@ class InventoryItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = InventoryItem
         fields = ['id', 'name', 'purchase_price', 'selling_price', 'usage', 'stock', 'safety_stock', 'stock_value', 'storage_location', 'usage_instructions', 'precautions']
-        read_only_fields = ['id', 'name', 'purchase_price', 'selling_price', 'usage', 'stock', 'safety_stock', 'stock_value', 'storage_location', 'usage_instructions', 'precautions']
+        read_only_fields = ['id', 'stock_value']  # 주석: stock_value는 자동 계산되므로 read_only로 설정
 
 class CategorySerializer(serializers.ModelSerializer):
     items = InventoryItemSerializer(many=True, read_only=True)
