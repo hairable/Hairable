@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
                 ('total_working', models.IntegerField(default=0)),
                 ('total_off', models.IntegerField(default=0)),
                 ('total_substitute', models.IntegerField(default=0)),
-                ('store', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='stores.store')),
+                ('store', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='management_calendar', to='stores.store')),
             ],
         ),
         migrations.CreateModel(
@@ -66,6 +66,20 @@ class Migration(migrations.Migration):
             ],
             options={
                 'unique_together': {('staff', 'date')},
+            },
+        ),
+        migrations.CreateModel(
+            name='ManagementCalendar',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('date', models.DateField()),
+                ('total_working', models.IntegerField(default=0)),
+                ('total_off', models.IntegerField(default=0)),
+                ('total_substitute', models.IntegerField(default=0)),
+                ('store', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='stores.store')),
+            ],
+            options={
+                'unique_together': {('store', 'date')},
             },
         ),
     ]

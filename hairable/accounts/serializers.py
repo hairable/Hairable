@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 import re
 from .models import User, Profile
 from stores.models import StoreStaff
+from django.contrib.auth.password_validation import validate_password  # 주석: Django의 기본 비밀번호 검증기 사용
+
 class ProfileSerializer(serializers.ModelSerializer):
     store_name = serializers.CharField(source='store.name', read_only=True)
     work_status = serializers.BooleanField()  # 근무 상태 (True: 근무중, False: 근무 안함)
@@ -21,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
     workplace = serializers.CharField(source='profile.store.name', read_only=True)  # 근무지 추가
     position = serializers.CharField(source='profile.specialty', read_only=True)  # 직급(매장 내 직급) 추가
     work_status = serializers.BooleanField(source='profile.work_status', read_only=True)  # 근무 상태 추가
-
+    password = serializers.CharField(write_only=True, validators=[validate_password])  
     class Meta:
         model = User
         fields = ("username", "email", "password", "phone", "birthday", "gender", "introduction", "role", 'profile', 'workplace', 'position', 'work_status')
@@ -99,7 +101,7 @@ class ResetPasswordEmailRequestSerializer(serializers.Serializer):
 class ResetPasswordConfirmSerializer(serializers.Serializer):
     uidb64 = serializers.CharField()
     token = serializers.CharField()
-    new_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])  # 주석: 비밀번호 유효성 검사 추가
 
     def validate_new_password(self, value):
         if len(value) < 8 or not re.search(r'[0-9]', value) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
@@ -108,7 +110,7 @@ class ResetPasswordConfirmSerializer(serializers.Serializer):
 # 비밀 번호 변경
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])  # 주석: 비밀번호 유효성 검사 추가
 
     def validate_new_password(self, value):
         if len(value) < 8 or not re.search(r'[0-9]', value) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):

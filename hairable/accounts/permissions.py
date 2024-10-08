@@ -6,8 +6,9 @@ class IsCEO(BasePermission):
         return request.user and request.user.role == 'CEO'
     
     def has_object_permission(self, request, view, obj):
-        # 수정 또는 삭제 요청 시, CEO인지 확인
-        return obj.ceo == request.user
+        if hasattr(obj, 'ceo'):
+            return obj.ceo == request.user
+        return False  # 주석: CEO와 관련 없는 객체에 대해서는 권한 거부
     
 class IsAnyCEO(BasePermission):
     def has_permission(self, request, view):

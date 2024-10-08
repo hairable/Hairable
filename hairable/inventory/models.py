@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MinValueValidator  # 주석: 최소값 검증을 위해 추가
 
 # Create your models here.
 
@@ -22,8 +23,8 @@ class InventoryItem(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='items', verbose_name='카테고리')
     name = models.CharField(max_length=200, verbose_name='제품명')
     image = models.ImageField(upload_to='inventory/', null=True, blank=True, verbose_name='제품 사진')
-    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='입고가')
-    selling_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='매장 판매가')
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], verbose_name='입고가')
+    selling_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], verbose_name='매장 판매가')
     usage = models.CharField(max_length=10, choices=USAGE_CHOICES, verbose_name='판매 용도')
     stock = models.IntegerField(default=0, verbose_name='재고')
     safety_stock = models.IntegerField(default=0, verbose_name='안전재고')
@@ -38,6 +39,10 @@ class InventoryItem(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        self.stock_value = self.stock * self.purchase_price
+        super().save(*args, **kwargs)
 
 
     class Meta:

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError #주석 : 오류 발생 시 추가
 
 User = get_user_model()
 
@@ -45,6 +46,10 @@ class WorkCalendar(models.Model):
     class Meta:
         unique_together = ['staff', 'date']  # 특정 직원의 날짜별로 중복 입력 금지
 
+    def clean(self): #주석 : 종료 시간이 시작 시간보다 늦어야 함
+        if self.start_time >= self.end_time:
+            raise ValidationError("종료 시간은 시작 시간보다 늦어야 합니다.")
+        
     def save(self, *args, **kwargs):
         # 직원이 같은 날짜에 이미 등록된 근무 상태가 있을 경우 기존 것을 삭제 후 새로 저장
         WorkCalendar.objects.filter(staff=self.staff, date=self.date).exclude(id=self.id).delete()
@@ -60,7 +65,9 @@ class ManagementCalendar(models.Model):
     total_working = models.IntegerField(default=0)
     total_off = models.IntegerField(default=0)
     total_substitute = models.IntegerField(default=0) # 대체 근무 인원
-    
+
+    class Meta: # 주석 : 매장과 날짜별로 중복 입력 금지
+        unique_together = ['store', 'date']
 
     def update_calendar(self):
         # 근무 중인 직원과 휴무 중인 직원의 수를 계산하여 캘린더에 반영
@@ -70,3 +77,6 @@ class ManagementCalendar(models.Model):
         self.total_staff_working = working_count
         self.total_staff_off = off_count
         self.save()
+
+    def __str__(self): #주석 : 매장 이름과 날짜를 반환
+        return f"{self.store.name} - {self.date}"
