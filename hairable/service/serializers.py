@@ -51,20 +51,17 @@ class ServiceSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         partial = self.context['request'].method == 'PATCH'
 
-        # Update basic fields
         for field in ['category', 'name', 'price', 'duration']:
             if partial and field not in validated_data:
                 continue
             setattr(instance, field, validated_data.get(field, getattr(instance, field)))
         instance.save()
 
-        # Update ServiceInventory only if it's provided in partial update
         if 'serviceinventory_set' in validated_data:
             instance.serviceinventory_set.all().delete()
             for inventory_data in validated_data.get('serviceinventory_set', []):
                 ServiceInventory.objects.create(service=instance, **inventory_data)
 
-        # Update ServiceDesigner only if it's provided in partial update
         if 'available_designers' in validated_data:
             instance.servicedesigner_set.all().delete()
             for designer_data in validated_data.get('available_designers', []):

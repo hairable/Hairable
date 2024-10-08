@@ -21,7 +21,6 @@ class ReservationViewSet(viewsets.ModelViewSet):
         service_id = request.data.get('service')
         assigned_designer_id = request.data.get('assigned_designer')
 
-        # Check if store, service, and designer are valid
         try:
             store = Store.objects.get(id=store_id)
             service = Service.objects.get(id=service_id, store=store)

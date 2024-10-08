@@ -3,17 +3,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Category, InventoryItem
 from .serializers import CategorySerializer, InventoryItemDetailSerializer, InventoryItemUpdateSerializer
-from rest_framework.permissions import IsAuthenticated  # 주석: 인증된 사용자만 접근 가능하도록 추가
+from rest_framework.permissions import IsAuthenticated  # 인증된 사용자만 접근 가능하도록 추가
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]  # 주석: 인증된 사용자만 접근 가능하도록 추가
+    permission_classes = [IsAuthenticated]
 
 class InventoryItemViewSet(viewsets.ModelViewSet):
     queryset = InventoryItem.objects.all()
     serializer_class = InventoryItemDetailSerializer
-    permission_classes = [IsAuthenticated]  # 주석: 인증된 사용자만 접근 가능하도록 추가
+    permission_classes = [IsAuthenticated] 
 
     def get_queryset(self):
         queryset = InventoryItem.objects.all()

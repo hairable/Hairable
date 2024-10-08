@@ -52,7 +52,6 @@ class Reservation(models.Model):
         super().save(*args, **kwargs)
 
     def calculate_cost(self):
-        # Calculate cost based on service price, designer wage, and inventory usage
         designer_cost = self.assigned_designer.hourly_wage * (self.service.duration.total_seconds() / 3600) if self.assigned_designer else 0
         inventory_cost = sum(item.inventory_item.cost * item.quantity for item in self.service.serviceinventory_set.all())
         return self.service.price + designer_cost + inventory_cost
