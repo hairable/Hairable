@@ -12,4 +12,6 @@ urlpatterns = [
     path('work-calendar/create/', views.WorkCalendarCreateView.as_view(), name='work-calendar-create'),
     path('management-calendar/<int:store_id>/', views.ManagementCalendarListView.as_view(), name='management-calendar-list'),
     path('management-calendar/update/<int:store_id>/<str:date>/', views.UpdateManagementCalendarView.as_view(), name='management-calendar-update'),
+    path('staff/<int:pk>/update/', views.StaffUpdateView.as_view({'put': 'update'}), name='staff-update'),
+
 ]

@@ -1,19 +1,19 @@
 from rest_framework import serializers
 from .models import Store, StoreStaff, WorkCalendar, ManagementCalendar
-
+from service.models import Service
 
 class StoreStaffSerializer(serializers.ModelSerializer):
     store_name = serializers.CharField(source='store.name', read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
-    
+    available_services = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all())
     class Meta:
         model = StoreStaff
-        fields = ['id', 'store_name', 'user_name', 'role', 'phone', 'date_joined']
+        fields = ['id', 'store_name', 'user_name', 'role', 'phone', 'date_joined', 'available_services']
         
         
 class StoreSerializer(serializers.ModelSerializer):
     ceo_name = serializers.CharField(source='ceo.username', read_only=True)
-    staff = StoreStaffSerializer(source='store_staff', many=True, read_only=True)  # store_staff 역참조 사용
+    staff = StoreStaffSerializer(source='store_staff', many=True, read_only=True)
 
     class Meta:
         model = Store
@@ -50,3 +50,18 @@ class ManagementCalendarSerializer(serializers.ModelSerializer):
     class Meta:
         model = ManagementCalendar
         fields = ['store', 'date', 'total_working', 'total_off', 'total_substitute']
+        
+
+class StaffUpdateSerializer(serializers.ModelSerializer):
+    available_services = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all(), many=True)
+    
+    class Meta:
+        model = StoreStaff
+        fields = ['role', 'available_services']
+
+    def update(self, instance, validated_data):
+        instance.role = validated_data.get('role', instance.role)
+        services = validated_data.get('available_services', [])
+        instance.available_services.set(services)  # many-to-many 관계 업데이트
+        instance.save()
+        return instance

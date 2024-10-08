@@ -27,13 +27,18 @@ class InventoryItem(models.Model):
     usage = models.CharField(max_length=10, choices=USAGE_CHOICES, verbose_name='판매 용도')
     stock = models.IntegerField(default=0, verbose_name='재고')
     safety_stock = models.IntegerField(default=0, verbose_name='안전재고')
-    stock_value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='재고 금액')
     storage_location = models.CharField(max_length=100, verbose_name='보관 장소')
     usage_instructions = models.TextField(blank=True, verbose_name='사용 방법')
     precautions = models.TextField(blank=True, verbose_name='사용 주의사항')
 
+    @property
+    def stock_value(self):
+        #재고 금액을 계산하여 반환
+        return self.purchase_price * self.stock
+
     def __str__(self):
         return self.name
+
 
     class Meta:
         verbose_name = '재고 아이템'

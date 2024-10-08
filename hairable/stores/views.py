@@ -1,10 +1,11 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Store, StoreStaff, WorkCalendar, ManagementCalendar
-from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer, ManagementCalendarSerializer
+from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer, ManagementCalendarSerializer, StaffUpdateSerializer
 from accounts.permissions import IsCEO, IsAnyCEO
 from django.contrib.auth import get_user_model
+from service.models import Service
 
 User = get_user_model()
 
@@ -51,10 +52,19 @@ class AddStaffView(generics.CreateAPIView):
         
         user_id = request.data.get('user_id')
         role = request.data.get('role')
+        available_services = request.data.get('available_services', [])
+
         store_staff = StoreStaff(store=store, user_id=user_id, role=role)
         store_staff.save()
+        
+        # available_services 설정
+        if available_services:
+            services = Service.objects.filter(id__in=available_services)
+            store_staff.available_services.set(services)
 
         return Response({'message': '직원이 성공적으로 추가되었습니다.'}, status=status.HTTP_201_CREATED)
+
+
 # 직원 삭제
 class RemoveStaffView(generics.DestroyAPIView):
     queryset = StoreStaff.objects.all()
@@ -167,3 +177,18 @@ class UpdateManagementCalendarView(generics.UpdateAPIView):
         serializer.save(total_working=total_working, total_off=total_off)
 
         return Response({'message': '관리 캘린더가 성공적으로 업데이트되었습니다.'})
+    
+
+
+class StaffUpdateView(viewsets.ModelViewSet):
+    queryset = StoreStaff.objects.all()
+    serializer_class = StaffUpdateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        staff = self.get_object()
+        serializer = self.get_serializer(staff, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

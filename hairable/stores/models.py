@@ -21,9 +21,17 @@ class StoreStaff(models.Model):
     role = models.CharField(max_length=10, choices=STORE_ROLES)
     phone = models.CharField(max_length=16, null=True, blank=True)
     date_joined = models.DateField(auto_now_add=True)
+    available_services = models.ManyToManyField('service.Service', related_name='staff_available_services') # 가능한 서비스 
 
     def __str__(self):
         return f"{self.user.username} - {self.store.name}"
+
+# 서비스 카테고리
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
 
 
 class WorkCalendar(models.Model):
