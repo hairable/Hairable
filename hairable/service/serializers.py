@@ -18,36 +18,31 @@ class ServiceDesignerSerializer(serializers.ModelSerializer):
         fields = ['store', 'designer']
 
 class ServiceSerializer(serializers.ModelSerializer):
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())  # 유지
-    available_designers = serializers.ListField(write_only=True)  # 추가
-    required_inventory = serializers.ListField(write_only=True)   # 추가
+    available_designers = serializers.PrimaryKeyRelatedField(
+        queryset=StoreStaff.objects.all(), many=True, required=False)
+    required_inventory = serializers.ListField(
+        child=serializers.DictField(), required=False)
 
     class Meta:
         model = Service
-        fields = ['category', 'name', 'price', 'duration', 'available_designers', 'required_inventory']
+        fields = ['id', 'category', 'name', 'price', 'duration', 'store', 'available_designers', 'required_inventory']
 
     def create(self, validated_data):
         available_designers = validated_data.pop('available_designers', [])
         required_inventory = validated_data.pop('required_inventory', [])
 
-        # Service 생성
         service = Service.objects.create(**validated_data)
 
-        # ServiceDesigner 생성
-        for designer_data in available_designers:
-            store_id = designer_data['store']
-            designer_id = designer_data['designer']
-            designer = StoreStaff.objects.get(id=designer_id)
-            store = Store.objects.get(id=store_id)
-            ServiceDesigner.objects.create(service=service, designer=designer, store=store)
+        # available_designers 저장
+        if available_designers:
+            service.available_designers.set(available_designers)
 
-        # ServiceInventory 생성
+        # required_inventory 저장
         for inventory_data in required_inventory:
-            inventory_item_id = inventory_data['inventory_item']
-            quantity = inventory_data['quantity']
-            inventory_item = InventoryItem.objects.get(id=inventory_item_id)  # Use InventoryItem here
+            inventory_item_id = inventory_data.get('inventory_item')
+            quantity = inventory_data.get('quantity')
+            inventory_item = InventoryItem.objects.get(id=inventory_item_id)
             ServiceInventory.objects.create(service=service, inventory_item=inventory_item, quantity=quantity)
-
 
         return service
 
@@ -83,52 +78,54 @@ class ServiceSerializer(serializers.ModelSerializer):
 class ReservationSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(max_length=100)
     customer_phone_number = serializers.CharField(max_length=15)
-    customer_gender = serializers.ChoiceField(choices=[('남', '남'), ('여', '여')])
+    customer_gender = serializers.ChoiceField(choices=[('M', '남'), ('F', '여')])
     service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())
-    assigned_designer = serializers.PrimaryKeyRelatedField(queryset=StoreStaff.objects.filter(role='디자이너'), allow_null=True, required=False)
+    assigned_designer = serializers.PrimaryKeyRelatedField(
+        queryset=StoreStaff.objects.all(),  # 나중에 유효성 검사에서 필터링할 예정
+        allow_null=True, required=False
+    )
     status = serializers.ChoiceField(choices=[('예약 중', '예약 중'), ('예약 대기', '예약 대기'), ('방문 완료', '방문 완료')], default='예약 대기')
-    calculate_cost = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Reservation
         fields = '__all__'
-        read_only_fields = ['calculate_cost', 'created_at']
+        read_only_fields = ['created_at']
+        extra_kwargs = {
+            'customer': {'required': False}
+        }
 
+    def validate(self, attrs):
+        # 서비스와 디자이너가 같은 매장에 속하는지 확인
+        service = attrs.get('service')
+        assigned_designer = attrs.get('assigned_designer')
+
+        if assigned_designer:
+            if assigned_designer.store != service.store:
+                raise serializers.ValidationError("The assigned designer must be from the same store as the service.")
+
+        return attrs
+    
     def create(self, validated_data):
-        # 고객 정보 저장
-        customer_name = validated_data.pop('customer_name')
-        customer_phone_number = validated_data.pop('customer_phone_number')
-        customer_gender = validated_data.pop('customer_gender')
+        customer_name = validated_data.pop('customer_name', None)
+        customer_phone_number = validated_data.pop('customer_phone_number', None)
+        customer_gender = validated_data.pop('customer_gender', None)
 
+        # 고객 정보 저장
         customer, created = Customer.objects.get_or_create(
             name=customer_name,
             phone_number=customer_phone_number,
             defaults={'gender': customer_gender}
         )
 
-        # Increment the reservation count for the customer
-        customer.reservation_count += 1
-        customer.save()
-
-        # 예약 등록
+        # 예약 생성
         validated_data['customer'] = customer
+        validated_data['customer_name'] = customer_name
+        validated_data['customer_phone_number'] = customer_phone_number
+        validated_data['customer_gender'] = customer_gender
+
         return super().create(validated_data)
 
-    def validate(self, attrs):
-        service = attrs.get('service')
-        reservation_time = attrs.get('reservation_time')
-        assigned_designer = attrs.get('assigned_designer')
 
-        # Check if the assigned designer is available
-        if assigned_designer and Reservation.objects.filter(assigned_designer=assigned_designer, reservation_time=reservation_time).exists():
-            raise serializers.ValidationError("The assigned designer is not available at the selected time.")
-
-        # Check if the required inventory is available
-        for inventory in service.serviceinventory_set.all():
-            if not inventory.inventory_item.is_in_stock(inventory.quantity):
-                raise serializers.ValidationError(f"The inventory item '{inventory.inventory_item.name}' is not available in the required quantity.")
-
-        return attrs
 
 
 class CustomerSerializer(serializers.ModelSerializer):

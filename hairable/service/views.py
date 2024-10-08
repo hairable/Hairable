@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .models import Service, Reservation, Customer, SalesReport
 from .serializers import ServiceSerializer, ReservationSerializer, CustomerSerializer, SalesReportSerializer, CategorySerializer
-from stores.models import Category
+from stores.models import Category, Store, StoreStaff
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
@@ -15,6 +15,29 @@ class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer
     permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        store_id = request.data.get('store_id')
+        service_id = request.data.get('service')
+        assigned_designer_id = request.data.get('assigned_designer')
+
+        # Check if store, service, and designer are valid
+        try:
+            store = Store.objects.get(id=store_id)
+            service = Service.objects.get(id=service_id, store=store)
+            assigned_designer = None
+            if assigned_designer_id:
+                assigned_designer = store.store_staff.get(id=assigned_designer_id)
+                if assigned_designer.store != store:
+                    return Response({'detail': 'The assigned designer must be from the same store as the service.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Store.DoesNotExist:
+            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Service.DoesNotExist:
+            return Response({'detail': 'Service not found for the given store.'}, status=status.HTTP_404_NOT_FOUND)
+        except StoreStaff.DoesNotExist:
+            return Response({'detail': 'Designer not found for the given store.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return super().create(request, *args, **kwargs)
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def recommend_designer(self, request):
@@ -31,7 +54,6 @@ class ReservationViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'No available designer found.'}, status=status.HTTP_404_NOT_FOUND)
         except Service.DoesNotExist:
             return Response({'detail': 'Service not found.'}, status=status.HTTP_404_NOT_FOUND)
-
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
