@@ -62,6 +62,25 @@ class StaffUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.role = validated_data.get('role', instance.role)
         services = validated_data.get('available_services', [])
-        instance.available_services.set(services)  # many-to-many 관계 업데이트
+        
+        # 기존의 제공 가능 서비스 목록을 가져옵니다.
+        old_services = set(instance.available_services.all())
+        
+        # 새로운 제공 가능 서비스로 설정
+        instance.available_services.set(services)
         instance.save()
+
+        # 새로운 서비스 목록과 이전 목록을 비교하여 서비스의 디자이너를 업데이트합니다.
+        new_services = set(instance.available_services.all())
+
+        # 추가된 서비스에 해당 직원 추가
+        added_services = new_services - old_services
+        for service in added_services:
+            service.available_designers.add(instance)
+
+        # 제거된 서비스에서 해당 직원 제거
+        removed_services = old_services - new_services
+        for service in removed_services:
+            service.available_designers.remove(instance)
+
         return instance

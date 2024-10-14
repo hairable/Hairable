@@ -40,7 +40,9 @@ class StoreDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.delete()
         return Response({'message': '스토어가 성공적으로 삭제되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
 
-# 직원 추가
+
+# 직원 추가 뷰에서 중복 확인 로직 추가
+
 class AddStaffView(generics.CreateAPIView):
     queryset = StoreStaff.objects.all()
     serializer_class = StoreStaffSerializer
@@ -50,9 +52,17 @@ class AddStaffView(generics.CreateAPIView):
         store_id = kwargs.get('store_id')
         store = generics.get_object_or_404(Store, pk=store_id)
         
+        # 현재 사용자가 해당 매장의 CEO인지 확인
+        if store.ceo != request.user:
+            return Response({'message': '매장의 소유자만 직원을 추가할 수 있습니다.'}, status=status.HTTP_403_FORBIDDEN)
+
         user_id = request.data.get('user_id')
         role = request.data.get('role')
         available_services = request.data.get('available_services', [])
+
+        # 동일 매장에 동일 직원 중복 추가 방지
+        if StoreStaff.objects.filter(store=store, user_id=user_id).exists():
+            return Response({'message': '해당 직원은 이미 이 매장에 등록되어 있습니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
         store_staff = StoreStaff(store=store, user_id=user_id, role=role)
         store_staff.save()
@@ -187,8 +197,25 @@ class StaffUpdateView(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         staff = self.get_object()
+        old_services = set(staff.available_services.all())  # 업데이트 전의 서비스 목록을 저장합니다.
+
         serializer = self.get_serializer(staff, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
+            staff = serializer.save()
+
+            # 업데이트 후의 서비스 목록을 가져옵니다.
+            new_services = set(staff.available_services.all())
+
+            # 추가된 서비스에 해당 직원 추가
+            added_services = new_services - old_services
+            for service in added_services:
+                service.available_designers.add(staff)
+
+            # 제거된 서비스에서 해당 직원 제거
+            removed_services = old_services - new_services
+            for service in removed_services:
+                service.available_designers.remove(staff)
+
             return Response(serializer.data)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -71,7 +71,6 @@ class ServiceSerializer(serializers.ModelSerializer):
 
         return instance
 
-    
 class ReservationSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(max_length=100)
     customer_phone_number = serializers.CharField(max_length=15)
@@ -90,16 +89,12 @@ class ReservationSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'customer': {'required': False}
         }
-
     def validate(self, attrs):
-        # 서비스와 디자이너가 같은 매장에 속하는지 확인
-        service = attrs.get('service')
+        # 서비스와 디자이너가 같은 매장에 있는지 확인
         assigned_designer = attrs.get('assigned_designer')
-
-        if assigned_designer:
-            if assigned_designer.store != service.store:
-                raise serializers.ValidationError("The assigned designer must be from the same store as the service.")
-
+        service = attrs.get('service')
+        if assigned_designer and assigned_designer.store != service.store:
+            raise serializers.ValidationError("The assigned designer must be from the same store as the service.")
         return attrs
     
     def create(self, validated_data):

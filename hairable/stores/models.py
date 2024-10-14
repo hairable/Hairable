@@ -7,7 +7,8 @@ User = get_user_model()
 class Store(models.Model):
     name = models.CharField(max_length=255, unique=True)
     ceo = models.ForeignKey(User, on_delete=models.CASCADE, related_name='stores')
-
+    address = models.CharField(max_length=255, default='unknown')
+    
     def __str__(self):
         return self.name
 
@@ -18,14 +19,20 @@ class StoreStaff(models.Model):
         ('manager', 'Manager'),
     )
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='store_staff')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='staff_roles')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='staff_roles')  # `user` 필드로 통합
     role = models.CharField(max_length=10, choices=STORE_ROLES)
     phone = models.CharField(max_length=16, null=True, blank=True)
     date_joined = models.DateField(auto_now_add=True)
     available_services = models.ManyToManyField('service.Service', related_name='staff_available_services') # 가능한 서비스 
-
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['store', 'user'], name='unique_store_user')
+        ]
+        
     def __str__(self):
         return f"{self.user.username} - {self.store.name}"
+
 
 # 서비스 카테고리
 class Category(models.Model):

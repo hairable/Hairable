@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinValueValidator  # 주석: 최소값 검증을 위해 추가
+from django.core.validators import MinValueValidator  
 
 # Create your models here.
 
@@ -34,16 +34,15 @@ class InventoryItem(models.Model):
 
     @property
     def stock_value(self):
-        #재고 금액을 계산하여 반환
+        # 재고 금액을 계산하여 반환
         return self.purchase_price * self.stock
 
     def __str__(self):
         return self.name
-    
-    def save(self, *args, **kwargs):
-        self.stock_value = self.stock * self.purchase_price
-        super().save(*args, **kwargs)
 
+    def save(self, *args, **kwargs):
+        # stock_value를 설정하지 않습니다.
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = '재고 아이템'
