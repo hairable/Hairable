@@ -53,7 +53,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             
             # 현재 로그인한 사용자가 해당 매장의 소유자인지 확인
             if store.ceo != request.user:
-                return Response({'detail': 'You are not authorized to make a reservation for this store.'}, status=status.HTTP_403_FORBIDDEN)
+                return Response({'detail': '해당 매장에 권한이 없습니다.'}, status=status.HTTP_403_FORBIDDEN)
 
             # 서비스가 해당 매장에서 제공되는지 확인
             service = Service.objects.get(id=service_id, store=store)
@@ -63,14 +63,14 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
                 # 배정된 디자이너가 해당 매장 소속인지 확인
                 if assigned_designer.store != store:
-                    return Response({'detail': 'The assigned designer must be from the same store as the service.'}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({'detail': '해당 매장에 존재하지 않는 서비스 입니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
         except Store.DoesNotExist:
-            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': '매장을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
         except Service.DoesNotExist:
-            return Response({'detail': 'Service not found for the given store.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': '해당 매장에 없는 서비스입니다.'}, status=status.HTTP_404_NOT_FOUND)
         except StoreStaff.DoesNotExist:
-            return Response({'detail': 'Designer not found for the given store.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': '해당 매장에서 등록되지 않은 디자이너입니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
         return super().create(request, *args, **kwargs)
 
@@ -87,9 +87,9 @@ class ReservationViewSet(viewsets.ModelViewSet):
             ]
             if available_designers:
                 return Response({'recommended_designer': available_designers[0].user.username}, status=status.HTTP_200_OK)
-            return Response({'detail': 'No available designer found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': '가능한 디자이너를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
         except Service.DoesNotExist:
-            return Response({'detail': 'Service not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': '서비스를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
