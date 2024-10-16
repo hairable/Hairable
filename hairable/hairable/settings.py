@@ -28,8 +28,8 @@ OPENAI_API_KEY = config.OPENAI_API_KEY
 DEBUG = False
 
 ALLOWED_HOSTS = ["3.38.213.199",
-                 "localhost",
-                 "127.0.0.1",]
+                "localhost",
+                "127.0.0.1",]
 
 
 # Application definition
