@@ -23,16 +23,22 @@ class UserSerializer(serializers.ModelSerializer):
     workplace = serializers.CharField(source='profile.store.name', read_only=True)  # 근무지 추가
     position = serializers.CharField(source='profile.specialty', read_only=True)  # 직급(매장 내 직급) 추가
     work_status = serializers.BooleanField(source='profile.work_status', read_only=True)  # 근무 상태 추가
-    password = serializers.CharField(write_only=True, validators=[validate_password])  
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password_confirm = serializers.CharField(write_only=True) 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "phone", "birthday", "gender", "introduction", "role", 'profile', 'workplace', 'position', 'work_status')
+        fields = ("username", "email", "password", "password_confirm", "phone", "birthday", "gender", "introduction", "role", 'profile', 'workplace', 'position', 'work_status')
         extra_kwargs = {
             'password': {'write_only': True}
         }
-
+    def validate(self, data):
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError("비밀번호가 일치하지 않습니다.")
+        return data
+    
     def create(self, validated_data):
         profile_data = validated_data.pop('profile', None)  # profile_data가 없을 경우 None으로 처리
+        validated_data.pop('password_confirm')
         user = User.objects.create_user(
             username=validated_data.get('username'),
             email=validated_data.get('email'),
