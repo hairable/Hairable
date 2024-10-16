@@ -83,7 +83,7 @@ class AIAssistantView(APIView):
             response_content = response.choices[0].message['content']
 
             # 개행 문자를 HTML 줄바꿈 태그로 변환
-            response_content = response_content.replace('\n', '<br>')
+            response_content = response_content.replace('\n', '')
 
         except Exception as e:
             # OpenAI API 호출 중 발생한 예외 처리
