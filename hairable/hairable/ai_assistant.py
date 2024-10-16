@@ -6,7 +6,7 @@ from .config import OPENAI_API_KEY
 from service.models import Reservation, Service
 from stores.models import Store, StoreStaff
 from inventory.models import InventoryItem  # 추가된 재고 모델 import
-import re
+import json
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -46,7 +46,6 @@ class AIAssistantView(APIView):
                 ]
 
                 # 매장 관련 재고 정보
-                # InventoryItem에 Store와 직접 연결된 필드가 없을 경우 수정 필요
                 inventory_data = InventoryItem.objects.filter(serviceinventory__service__store=store).distinct()
                 inventory_details = [
                     {
@@ -67,7 +66,7 @@ class AIAssistantView(APIView):
                 store_info.append(store_details)
 
             # 컨텍스트 생성
-            context = f"사용자의 가게 정보: {store_info}"
+            context = f"사용자의 가게 정보 (Markdown 형식으로 응답하세요): {json.dumps(store_info, ensure_ascii=False, indent=2)}"
 
             # OpenAI API 호출 (유연한 응답 생성)
             response = openai.ChatCompletion.create(
