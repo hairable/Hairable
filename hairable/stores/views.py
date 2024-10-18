@@ -2,17 +2,23 @@ from rest_framework import generics, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Store, StoreStaff, WorkCalendar, ManagementCalendar
-from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer, ManagementCalendarSerializer, StaffUpdateSerializer
+from .models import Store, StoreStaff, WorkCalendar
+from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer, StaffUpdateSerializer
 from accounts.permissions import IsCEO, IsAnyCEO
 from django.shortcuts import get_object_or_404
 from service.models import Service
 from django.contrib.auth import get_user_model
 from datetime import datetime
 User = get_user_model()
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from rest_framework.decorators import action
+from rest_framework import status
+from calendar import monthrange
+from django.db import models
+import logging
 
-
-
+logger = logging.getLogger(__name__)
 
 class StoreViewSet(viewsets.ModelViewSet):
     queryset = Store.objects.all()
@@ -102,61 +108,121 @@ class StoreStaffViewSet(viewsets.ModelViewSet):
 
         return response
     
+
 class WorkCalendarViewSet(viewsets.ModelViewSet):
     queryset = WorkCalendar.objects.all()
     serializer_class = WorkCalendarSerializer
     permission_classes = [IsAuthenticated]
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def working_staff(self, request):
-        date_str = request.query_params.get('date')
-        if not date_str:
-            return Response({'detail': '날짜를 입력해주세요 (YYYY-MM-DD 형식).'}, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        store_id = self.kwargs.get('store_id')
+        return WorkCalendar.objects.filter(store_id=store_id)
 
-        try:
-            date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        except ValueError:
-            return Response({'detail': '날짜 형식이 잘못되었습니다. "YYYY-MM-DD" 형식을 사용하세요.'}, status=status.HTTP_400_BAD_REQUEST)
+    @action(detail=False, methods=['get'], url_path='monthly-summary')
+    def monthly_summary(self, request, store_id=None):
+        year = request.query_params.get('year')
+        month = request.query_params.get('month')
 
-        working_staff = WorkCalendar.objects.filter(date=date, status='working')
-        if not working_staff.exists():
-            return Response({'detail': '해당 날짜에 근무 중인 직원이 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = self.get_serializer(working_staff, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not all([store_id, year, month]):
+            return Response({'detail': '매장 ID, 년도, 월을 모두 입력해주세요.'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # staff가 존재하는지 확인
-        staff_id = request.data.get('staff')
         try:
-            staff = User.objects.get(id=staff_id)
-        except User.DoesNotExist:
-            return Response({'detail': '해당하는 직원이 존재하지 않습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+            year = int(year)
+            month = int(month)
+            _, last_day = monthrange(year, month)
+            start_date = datetime(year, month, 1)
+            end_date = datetime(year, month, last_day)
+        except ValueError:
+            return Response({'detail': '올바른 년도와 월을 입력해주세요.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # serializer에 staff 추가
-        serializer.save(staff=staff)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        daily_summary = WorkCalendar.objects.filter(
+            store_id=store_id,
+            date__range=[start_date, end_date]
+        ).values('date').annotate(
+            working_count=Count('id', filter=models.Q(status='working')),
+            off_count=Count('id', filter=models.Q(status='off'))
+        ).order_by('date')
 
+        return Response(daily_summary)
+
+    @action(detail=False, methods=['get'], url_path='daily-detail')
+    def daily_detail(self, request, store_id=None):
+        date = request.query_params.get('date')
+
+        if not all([store_id, date]):
+            return Response({'detail': '매장 ID와 날짜를 모두 입력해주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            date = datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'detail': '올바른 날짜 형식을 입력해주세요 (YYYY-MM-DD).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        daily_detail = WorkCalendar.objects.filter(
+            store_id=store_id,
+            date=date,
+        ).select_related('staff__user', 'store').values(
+            'staff__user__id',
+            'staff__user__username',
+            'start_time',
+            'end_time',
+            'status',
+            'store__name'
+        )
+
+        if not daily_detail:
+            return Response({'detail': '해당 날짜에 대한 근무 일정이 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        store_name = daily_detail[0]['store__name'] if daily_detail else None
+
+        response_data = {
+            'store_name': store_name,
+            'date': date,
+            'schedules': list(daily_detail)
+        }
+
+        return Response(response_data)
+    
     def perform_create(self, serializer):
         serializer.save()
+        
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
 
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
 
-class ManagementCalendarViewSet(viewsets.ModelViewSet):
-    queryset = ManagementCalendar.objects.all()
-    serializer_class = ManagementCalendarSerializer
-    permission_classes = [IsAuthenticated]
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['patch'], url_path='update-status')
+    def update_status(self, request, store_id=None):
+        user_id = request.data.get('user_id')
+        date = request.data.get('date')
+        status = request.data.get('status')
+        start_time = request.data.get('start_time')
+        end_time = request.data.get('end_time')
+
+        if not all([user_id, date, status]):
+            return Response({'detail': 'user_id, date, status는 필수 입력 항목입니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            work_calendar = WorkCalendar.objects.get(
+                store_id=store_id,
+                staff__user_id=user_id,
+                date=date
+            )
+        except WorkCalendar.DoesNotExist:
+            return Response({'detail': '해당 날짜의 근무 일정을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(work_calendar, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
 
     def perform_update(self, serializer):
-        store_id = self.kwargs.get('store_id')
-        date = self.kwargs.get('date')
-
-        work_calendar = WorkCalendar.objects.filter(store_id=store_id, date=date)
-        total_working = work_calendar.filter(status='working').count()
-        total_off = work_calendar.filter(status='off').count()
-
-        serializer.save(total_working=total_working, total_off=total_off)
-
+        serializer.save()

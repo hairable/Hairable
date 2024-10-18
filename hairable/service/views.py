@@ -82,7 +82,19 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 )
                 if overlapping_reservations.exists():
                     return Response({'detail': '해당 시간에 이미 예약이 있습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+            # 디자이너의 근무 상태 확인
+            work_calendar = WorkCalendar.objects.filter(
+                staff=assigned_designer,
+                date=reservation_time.date(),
+                status='working'
+            ).first()
 
+            if not work_calendar:
+                return Response({'detail': '해당 날짜에 디자이너가 근무하지 않습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 예약 시간이 근무 시간 내에 있는지 확인
+            if not (work_calendar.start_time <= reservation_time.time() <= work_calendar.end_time):
+                return Response({'detail': '예약 시간이 디자이너의 근무 시간을 벗어났습니다.'}, status=status.HTTP_400_BAD_REQUEST)
             # 예약 생성
             return super().create(request, *args, **kwargs)
         except Store.DoesNotExist:
@@ -93,7 +105,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             return Response({'detail': '해당 매장에서 등록되지 않은 디자이너입니다.'}, status=status.HTTP_400_BAD_REQUEST)
         except (ValueError, parser.ParserError):
             return Response({'detail': '예약 시간 형식이 잘못되었습니다.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer

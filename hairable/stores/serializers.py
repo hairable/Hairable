@@ -1,7 +1,9 @@
 from rest_framework import serializers
-from .models import Store, StoreStaff, WorkCalendar, ManagementCalendar
+from .models import Store, StoreStaff, WorkCalendar
 from service.models import Service
 from accounts.models import User
+from django.shortcuts import get_object_or_404
+from django.db import IntegrityError
 
 class StoreStaffSerializer(serializers.ModelSerializer):
     store_name = serializers.CharField(source='store.name', read_only=True)
@@ -21,55 +23,36 @@ class StoreSerializer(serializers.ModelSerializer):
         model = Store
         fields = ['id', 'name', 'ceo_name', 'staff']
 
-
 class WorkCalendarSerializer(serializers.ModelSerializer):
-    staff = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    store = serializers.PrimaryKeyRelatedField(queryset=Store.objects.all())
+    user_id = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = WorkCalendar
-        fields = ['staff', 'store', 'date', 'start_time', 'end_time', 'status']
+        fields = ['id', 'user_id', 'store', 'date', 'start_time', 'end_time', 'status']
+        read_only_fields = ['id', 'store']
 
     def create(self, validated_data):
-        # staff와 store를 validated_data에서 가져옴
-        staff = validated_data.get('staff')
-        store = validated_data.get('store')
-
-        # WorkCalendar 인스턴스 생성
-        work_calendar = WorkCalendar.objects.create(
-            staff=staff,
-            store=store,
-            date=validated_data['date'],
-            start_time=validated_data['start_time'],
-            end_time=validated_data['end_time'],
-            status=validated_data['status']
-        )
-
-        # ManagementCalendar 업데이트
-        management_calendar, created = ManagementCalendar.objects.get_or_create(store=store, date=work_calendar.date)
-        management_calendar.update_calendar()
-
+        user_id = validated_data.pop('user_id')
+        store_id = self.context['view'].kwargs.get('store_id')
+        store_staff = StoreStaff.objects.get(store_id=store_id, user_id=user_id)
+        
+        try:
+            work_calendar = WorkCalendar.objects.create(
+                staff=store_staff,
+                store_id=store_id,
+                **validated_data
+            )
+        except IntegrityError:
+            raise serializers.ValidationError("이미 해당 날짜에 스케줄이 존재합니다.")
+        
         return work_calendar
 
     def update(self, instance, validated_data):
-        # WorkCalendar 업데이트 시 ManagementCalendar 업데이트
-        instance.status = validated_data.get('status', instance.status)
-        instance.start_time = validated_data.get('start_time', instance.start_time)
-        instance.end_time = validated_data.get('end_time', instance.end_time)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         instance.save()
-
-        # ManagementCalendar 업데이트
-        management_calendar, created = ManagementCalendar.objects.get_or_create(store=instance.store, date=instance.date)
-        management_calendar.update_calendar()
-
         return instance
 
-
-class ManagementCalendarSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ManagementCalendar
-        fields = ['store', 'date', 'total_working', 'total_off', 'total_substitute']
-        
 
 class StaffUpdateSerializer(serializers.ModelSerializer):
     available_services = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all(), many=True)
