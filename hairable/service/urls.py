@@ -10,5 +10,5 @@ router.register(r'customers', CustomerViewSet)
 router.register(r'sales_reports', SalesReportViewSet)
 
 urlpatterns = [
-    path('', include((router.urls, 'service'), namespace='service')),
+    path('', include(router.urls)),
 ]

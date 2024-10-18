@@ -1,10 +1,16 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .models import Service, Reservation, Customer, SalesReport
+from rest_framework.permissions import IsAuthenticated
+from .models import Service, Reservation, Customer, SalesReport, Category
 from .serializers import ServiceSerializer, ReservationSerializer, CustomerSerializer, SalesReportSerializer, CategorySerializer
-from stores.models import Category, Store, StoreStaff
+from stores.models import Store, StoreStaff, WorkCalendar
+from datetime import datetime
+from dateutil import parser
+import logging
+from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
@@ -24,7 +30,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
         try:
             store = Store.objects.get(id=store_id)
         except Store.DoesNotExist:
-            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': '매장을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         # 슈퍼 호출 전에 서비스 생성 로직을 실행해 staff 추가
         response = super().create(request, *args, **kwargs)
@@ -37,7 +43,6 @@ class ServiceViewSet(viewsets.ModelViewSet):
         return response
 
 
-
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer
@@ -46,51 +51,49 @@ class ReservationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         store_id = request.data.get('store_id')
         service_id = request.data.get('service')
-        assigned_designer_id = request.data.get('assigned_designer')
+        assigned_designer_user_id = request.data.get('assigned_designer')
 
         try:
+            reservation_time = parser.parse(request.data.get('reservation_time'))
             store = Store.objects.get(id=store_id)
-            
-            # 현재 로그인한 사용자가 해당 매장의 소유자인지 확인
-            if store.ceo != request.user:
-                return Response({'detail': '해당 매장에 권한이 없습니다.'}, status=status.HTTP_403_FORBIDDEN)
-
-            # 서비스가 해당 매장에서 제공되는지 확인
             service = Service.objects.get(id=service_id, store=store)
+            assigned_designer = StoreStaff.objects.get(user_id=assigned_designer_user_id, store=store)
 
-            if assigned_designer_id:
-                assigned_designer = StoreStaff.objects.get(id=assigned_designer_id)
+            # 서비스의 소요 시간 계산
+            duration = service.duration
+            end_time = reservation_time + duration
 
-                # 배정된 디자이너가 해당 매장 소속인지 확인
-                if assigned_designer.store != store:
-                    return Response({'detail': '해당 매장에 존재하지 않는 서비스 입니다.'}, status=status.HTTP_400_BAD_REQUEST)
+            # 해당 디자이너의 기존 예약 확인
+            overlapping_reservations = Reservation.objects.filter(
+                assigned_designer=assigned_designer,
+                reservation_time__lt=end_time,
+                reservation_time__gt=reservation_time - duration
+            )
 
+            if overlapping_reservations.exists():
+                return Response({'detail': '해당 시간에 이미 예약이 있습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 매니저도 같은 방식으로 확인
+            if StoreStaff.objects.filter(user_id=assigned_designer_user_id, store=store, role='manager').exists():
+                overlapping_reservations = Reservation.objects.filter(
+                    assigned_designer__user_id=assigned_designer_user_id,
+                    reservation_time__lt=end_time,
+                    reservation_time__gt=reservation_time - duration
+                )
+                if overlapping_reservations.exists():
+                    return Response({'detail': '해당 시간에 이미 예약이 있습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 예약 생성
+            return super().create(request, *args, **kwargs)
         except Store.DoesNotExist:
             return Response({'detail': '매장을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
         except Service.DoesNotExist:
             return Response({'detail': '해당 매장에 없는 서비스입니다.'}, status=status.HTTP_404_NOT_FOUND)
         except StoreStaff.DoesNotExist:
             return Response({'detail': '해당 매장에서 등록되지 않은 디자이너입니다.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        return super().create(request, *args, **kwargs)
-
-
-    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
-    def recommend_designer(self, request):
-        service_id = request.data.get('service_id')
-        reservation_time = request.data.get('reservation_time')
-        try:
-            service = Service.objects.get(pk=service_id)
-            available_designers = [
-                designer for designer in service.available_designers.filter(role='designer')
-                if not Reservation.objects.filter(assigned_designer=designer, reservation_time=reservation_time).exists()
-            ]
-            if available_designers:
-                return Response({'recommended_designer': available_designers[0].user.username}, status=status.HTTP_200_OK)
-            return Response({'detail': '가능한 디자이너를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
-        except Service.DoesNotExist:
-            return Response({'detail': '서비스를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
-
+        except (ValueError, parser.ParserError):
+            return Response({'detail': '예약 시간 형식이 잘못되었습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
@@ -106,5 +109,3 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
-    
-    

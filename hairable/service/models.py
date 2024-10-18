@@ -40,9 +40,16 @@ class Reservation(models.Model):
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE)
     reservation_time = models.DateTimeField()
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
-    assigned_designer = models.ForeignKey('stores.StoreStaff', on_delete=models.SET_NULL, null=True, blank=True, limit_choices_to={'role': 'designer'})
+    assigned_designer = models.ForeignKey(
+    'stores.StoreStaff',
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    limit_choices_to={'role__in': ['designer', 'manager']}
+)
     status = models.CharField(max_length=20, choices=[('예약 중', '예약 중'), ('예약 대기', '예약 대기'), ('방문 완료', '방문 완료')])
     created_at = models.DateTimeField(auto_now_add=True)
+
     
     def save(self, *args, **kwargs):
         # 예약이 생성될 때 서비스의 store를 설정

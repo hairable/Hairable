@@ -1,14 +1,16 @@
 from rest_framework import serializers
 from .models import Store, StoreStaff, WorkCalendar, ManagementCalendar
 from service.models import Service
+from accounts.models import User
 
 class StoreStaffSerializer(serializers.ModelSerializer):
     store_name = serializers.CharField(source='store.name', read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
     available_services = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all())
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
     class Meta:
         model = StoreStaff
-        fields = ['id', 'store_name', 'user_name', 'role', 'phone', 'date_joined', 'available_services']
+        fields = ['user_id', 'store_name', 'user_name', 'role', 'phone', 'date_joined', 'available_services']
         
         
 class StoreSerializer(serializers.ModelSerializer):
@@ -21,16 +23,30 @@ class StoreSerializer(serializers.ModelSerializer):
 
 
 class WorkCalendarSerializer(serializers.ModelSerializer):
+    staff = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    store = serializers.PrimaryKeyRelatedField(queryset=Store.objects.all())
+
     class Meta:
         model = WorkCalendar
-        fields = ['staff_id', 'store_id', 'date', 'start_time', 'end_time', 'status']
+        fields = ['staff', 'store', 'date', 'start_time', 'end_time', 'status']
 
     def create(self, validated_data):
-        # WorkCalendar 생성 시 ManagementCalendar 업데이트
-        work_calendar = WorkCalendar.objects.create(**validated_data)
+        # staff와 store를 validated_data에서 가져옴
+        staff = validated_data.get('staff')
+        store = validated_data.get('store')
+
+        # WorkCalendar 인스턴스 생성
+        work_calendar = WorkCalendar.objects.create(
+            staff=staff,
+            store=store,
+            date=validated_data['date'],
+            start_time=validated_data['start_time'],
+            end_time=validated_data['end_time'],
+            status=validated_data['status']
+        )
 
         # ManagementCalendar 업데이트
-        management_calendar, created = ManagementCalendar.objects.get_or_create(store=work_calendar.store, date=work_calendar.date)
+        management_calendar, created = ManagementCalendar.objects.get_or_create(store=store, date=work_calendar.date)
         management_calendar.update_calendar()
 
         return work_calendar
@@ -38,6 +54,8 @@ class WorkCalendarSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # WorkCalendar 업데이트 시 ManagementCalendar 업데이트
         instance.status = validated_data.get('status', instance.status)
+        instance.start_time = validated_data.get('start_time', instance.start_time)
+        instance.end_time = validated_data.get('end_time', instance.end_time)
         instance.save()
 
         # ManagementCalendar 업데이트
@@ -45,6 +63,7 @@ class WorkCalendarSerializer(serializers.ModelSerializer):
         management_calendar.update_calendar()
 
         return instance
+
 
 class ManagementCalendarSerializer(serializers.ModelSerializer):
     class Meta:
