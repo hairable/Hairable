@@ -9,7 +9,6 @@ from django.shortcuts import get_object_or_404
 from service.models import Service
 from django.contrib.auth import get_user_model
 from datetime import datetime
-User = get_user_model()
 from django.db.models import Count
 from rest_framework.decorators import action
 from rest_framework import status
@@ -17,8 +16,10 @@ from calendar import monthrange
 from django.db import models
 import logging
 from django.db.models import Q
+from dateutil import parser
 
 
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 class StoreViewSet(viewsets.ModelViewSet):
@@ -210,31 +211,37 @@ class WorkCalendarViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=False, methods=['patch'], url_path='update-status')
-    def update_status(self, request, store_id=None):
-        user_id = request.data.get('user_id')
-        date = request.data.get('date')
-        status = request.data.get('status')
-        start_time = request.data.get('start_time')
-        end_time = request.data.get('end_time')
+    @action(detail=True, methods=['patch'])
+    def update_status(self, request, pk=None):
+        reservation = self.get_object()
+        new_status = request.data.get('status')
+        new_date = request.data.get('new_date')
 
-        if not all([user_id, date, status]):
-            return Response({'detail': 'user_id, date, status는 필수 입력 항목입니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        if new_status not in ['예약 중', '예약 대기', '예약 취소', '방문 완료']:
+            return Response({'error': '잘못된 상태입니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            work_calendar = WorkCalendar.objects.get(
-                store_id=store_id,
-                staff__user_id=user_id,
-                date=date
-            )
-        except WorkCalendar.DoesNotExist:
-            return Response({'detail': '해당 날짜의 근무 일정을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+        if new_status == '예약 취소' and reservation.status != '예약 대기':
+            return Response({'error': '예약 대기 상태만 취소할 수 있습니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = self.get_serializer(work_calendar, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        if new_date and reservation.status != '예약 중':
+            return Response({'error': '예약 중 상태만 날짜를 변경할 수 있습니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(serializer.data)
+        if new_date:
+            try:
+                new_date = parser.parse(new_date)
+                reservation.reservation_time = new_date
+            except ValueError:
+                return Response({'error': '잘못된 날짜 형식입니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    def perform_update(self, serializer):
-        serializer.save()
+        old_status = reservation.status
+        reservation.status = new_status
+        reservation.save()
+
+        if new_status == '방문 완료' and old_status != '방문 완료':
+            try:
+                reservation.record_sales()
+            except Exception as e:
+                logger.error(f"Sales report update failed: {str(e)}")
+                return Response({'message': '예약 상태가 변경되었지만, 매출 보고서 업데이트에 실패했습니다.'}, status=status.HTTP_200_OK)
+
+        return Response({'message': '예약이 성공적으로 수정되었습니다.'})
