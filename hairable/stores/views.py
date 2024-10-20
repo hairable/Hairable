@@ -1,9 +1,9 @@
-from rest_framework import generics, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Store, StoreStaff, WorkCalendar
-from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer, StaffUpdateSerializer
+from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer
 from accounts.permissions import IsCEO, IsAnyCEO
 from django.shortcuts import get_object_or_404
 from service.models import Service
@@ -11,12 +11,13 @@ from django.contrib.auth import get_user_model
 from datetime import datetime
 User = get_user_model()
 from django.db.models import Count
-from django.db.models.functions import TruncDate
 from rest_framework.decorators import action
 from rest_framework import status
 from calendar import monthrange
 from django.db import models
 import logging
+from django.db.models import Q
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +82,16 @@ class StoreStaffViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         store_id = self.kwargs.get('store_id')
-        if store_id:
-            return StoreStaff.objects.filter(store_id=store_id)
-        return super().get_queryset()
+        queryset = StoreStaff.objects.filter(store_id=store_id)
+        
+        query = self.request.query_params.get('query')
+        if query:
+            queryset = queryset.filter(
+                Q(user__username__icontains=query) |
+                Q(user__id__icontains=query)
+            )
+        
+        return queryset
 
     def update(self, request, *args, **kwargs):
         kwargs['partial'] = True  # 부분 업데이트 허용
@@ -108,6 +116,10 @@ class StoreStaffViewSet(viewsets.ModelViewSet):
 
         return response
     
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 class WorkCalendarViewSet(viewsets.ModelViewSet):
     queryset = WorkCalendar.objects.all()

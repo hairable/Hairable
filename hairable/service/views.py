@@ -9,6 +9,7 @@ from datetime import datetime
 from dateutil import parser
 import logging
 from datetime import timedelta
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -105,11 +106,31 @@ class ReservationViewSet(viewsets.ModelViewSet):
             return Response({'detail': '해당 매장에서 등록되지 않은 디자이너입니다.'}, status=status.HTTP_400_BAD_REQUEST)
         except (ValueError, parser.ParserError):
             return Response({'detail': '예약 시간 형식이 잘못되었습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    def list(self, request, *args, **kwargs):
+        query = request.query_params.get('query', '')
+        queryset = self.queryset.filter(
+            Q(customer__name__icontains=query) |
+            Q(customer__phone_number__icontains=query) |
+            Q(assigned_designer__user__username__icontains=query)
+        )
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated]
+    
+    def list(self, request, *args, **kwargs):
+        query = request.query_params.get('query', '')
+        queryset = self.queryset.filter(
+            Q(name__icontains=query) | Q(phone_number__icontains=query)
+        )
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 class SalesReportViewSet(viewsets.ModelViewSet):
     queryset = SalesReport.objects.all()
