@@ -26,7 +26,35 @@ SECRET_KEY = config.SECRET_KEY
 OPENAI_API_KEY = config.OPENAI_API_KEY
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'DEBUG',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'stores': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
 ALLOWED_HOSTS = ["3.38.213.199",
                  "localhost",
                  "127.0.0.1",]
@@ -41,18 +69,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    #third_party
+    # third_party
     'django_extensions',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'django_seed',
-    #local_apps
+    'model_utils',
+    # local_apps
     'accounts',
     'inventory',
     'stores',
     'service',
-    'supplier',
-    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -93,11 +120,11 @@ WSGI_APPLICATION = 'hairable.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hairable',  
-        'USER': 'root',     
-        'PASSWORD': config.MYSQL_PASSWORD,   
-        'HOST': 'localhost',           
-        'PORT': '3306',                
+        'NAME': 'hairable',
+        'USER': 'root',
+        'PASSWORD': config.MYSQL_PASSWORD,
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
@@ -157,10 +184,10 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-'ACCESS_TOKEN_LIFETIME': timedelta(minutes=120),
-'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-'ROTATE_REFRESH_TOKENS': True,
-'BLACKLIST_AFTER_ROTATION': True,
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=120),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
 }
 
 # 이메일 서버 설정
@@ -172,4 +199,4 @@ EMAIL_HOST_USER = config.EMAIL_HOST_USER
 EMAIL_HOST_PASSWORD = config.EMAIL_HOST_PASSWORD
 DEFAULT_FROM_EMAIL = config.EMAIL_HOST_USER
 
-CORS_ALLOW_ALL_ORIGINS = True 
+CORS_ALLOW_ALL_ORIGINS = True

@@ -1,105 +1,153 @@
 from django.test import TestCase
-from django.urls import reverse
-from rest_framework import status
 from rest_framework.test import APIClient
 from .models import Service, Reservation, Customer, Category
-from stores.models import Store, StoreStaff
-from accounts.models import User
-from datetime import date, datetime, timedelta
-from django.utils import timezone
+from .serializers import ServiceSerializer, ReservationSerializer, CustomerSerializer, CategorySerializer
+from stores.models import Store  # Store 모델 import
+from django.contrib.auth.models import User
+
+class ServiceTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='testuser', password='12345')
+        self.client.force_authenticate(user=self.user)
+        self.category = Category.objects.create(name="Test Category")
+        self.store = Store.objects.create(name="Test Store")  # Store 인스턴스 생성
+        self.service_data = {
+            "category": self.category.id,
+            "name": "Test Service",
+            "price": 100,
+            "duration": 60,
+            "store": self.store.id
+        }
+        self.service = Service.objects.create(**self.service_data)
+
+    def test_create_service(self):
+        response = self.client.post('/services/', self.service_data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Service.objects.count(), 2)
+
+    def test_get_service(self):
+        response = self.client.get(f'/services/{self.service.id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['name'], self.service.name)
+
+    def test_update_service(self):
+        updated_data = self.service_data.copy()
+        updated_data['name'] = 'Updated Service'
+        response = self.client.put(f'/services/{self.service.id}/', updated_data, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.service.refresh_from_db()
+        self.assertEqual(self.service.name, 'Updated Service')
+
+    def test_delete_service(self):
+        response = self.client.delete(f'/services/{self.service.id}/')
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(Service.objects.count(), 0)
 
 class ReservationTests(TestCase):
     def setUp(self):
-        # 테스트를 위한 초기 데이터 설정
         self.client = APIClient()
-        
-        self.ceo = User.objects.create_user(
-            username="testceo",
-            password="password",
-            birthday=date(1990, 1, 1),
-            phone="010-1111-1111"  # 고유한 전화번호 설정
-        )
+        self.user = User.objects.create_user(username='testuser', password='12345')
+        self.client.force_authenticate(user=self.user)
+        self.category = Category.objects.create(name="Test Category")
+        self.store = Store.objects.create(name="Test Store")  # Store 인스턴스 생성
+        self.service = Service.objects.create(category=self.category, name="Test Service", price=100, duration=60, store=self.store)
+        self.customer = Customer.objects.create(name="Test Customer", phone_number="010-1234-5678", gender="M")
+        self.reservation_data = {
+            "customer": self.customer.id,
+            "service": self.service.id,
+            "assigned_designer": None,
+            "status": "예약 대기"
+        }
+        self.reservation = Reservation.objects.create(**self.reservation_data)
 
-        # Store 인스턴스를 생성할 때 ceo 필드 추가
-        self.store = Store.objects.create(
-            name="Test Store",
-            address="123 Test St",
-            ceo=self.ceo
-        )
-        
-        # 유저 및 직원 생성
-        self.user = User.objects.create_user(
-            username='staffuser',
-            password='testpassword',
-            birthday=date(1995, 5, 15),
-            phone="010-2222-2222"  # 고유한 전화번호 설정
-        )
-        self.staff = StoreStaff.objects.create(store=self.store, user=self.user, role='designer')
-        
-        # 카테고리 생성
-        self.category = Category.objects.create(name="헤어 서비스")
+    def test_create_reservation(self):
+        response = self.client.post('/reservations/', self.reservation_data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Reservation.objects.count(), 2)
 
-        # 서비스 생성
-        self.service = Service.objects.create(
-            name="Hair Cut",
-            price=30.0,
-            duration=timedelta(hours=1),  # timedelta 객체 사용
-            store=self.store,
-            category=self.category  # 카테고리 추가
-        )
-        
-        # 고객 생성
+    def test_get_reservation(self):
+        response = self.client.get(f'/reservations/{self.reservation.id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], self.reservation.status)
+
+    def test_update_reservation(self):
+        updated_data = self.reservation_data.copy()
+        updated_data['status'] = '예약 중'
+        response = self.client.put(f'/reservations/{self.reservation.id}/', updated_data, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.reservation.refresh_from_db()
+        self.assertEqual(self.reservation.status, '예약 중')
+
+    def test_delete_reservation(self):
+        response = self.client.delete(f'/reservations/{self.reservation.id}/')
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(Reservation.objects.count(), 0)
+
+class CustomerTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='testuser', password='12345')
+        self.client.force_authenticate(user=self.user)
         self.customer_data = {
-            "name": "홍길동",
+            "name": "Test Customer",
             "phone_number": "010-1234-5678",
             "gender": "M"
         }
         self.customer = Customer.objects.create(**self.customer_data)
-        
-        # 예약 데이터
-        self.reservation_data = {
-            "store_id": self.store.id,
-            "customer_name": self.customer_data['name'],
-            "customer_phone_number": self.customer_data['phone_number'],
-            "customer_gender": self.customer_data['gender'],
-            "reservation_time": datetime(2024, 10, 10, 14, 0, tzinfo=timezone.utc),
-            "service": self.service.id,
-            "assigned_designer": self.staff.id,
-            "status": "예약 중"
+
+    def test_create_customer(self):
+        response = self.client.post('/customers/', self.customer_data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Customer.objects.count(), 2)
+
+    def test_get_customer(self):
+        response = self.client.get(f'/customers/{self.customer.id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['name'], self.customer.name)
+
+    def test_update_customer(self):
+        updated_data = self.customer_data.copy()
+        updated_data['name'] = 'Updated Customer'
+        response = self.client.put(f'/customers/{self.customer.id}/', updated_data, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.name, 'Updated Customer')
+
+    def test_delete_customer(self):
+        response = self.client.delete(f'/customers/{self.customer.id}/')
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(Customer.objects.count(), 0)
+
+class CategoryTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='testuser', password='12345')
+        self.client.force_authenticate(user=self.user)
+        self.category_data = {
+            "name": "Test Category"
         }
-        # 인증 설정
-        self.client.force_authenticate(user=self.ceo)
+        self.category = Category.objects.create(**self.category_data)
 
-    def test_create_reservation_successful(self):
-        # 정상적인 예약 생성 테스트
-        response = self.client.post(reverse('service:reservation-list'), data=self.reservation_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Reservation.objects.count(), 1)
-        reservation = Reservation.objects.first()
-        self.assertEqual(reservation.customer_name, self.customer_data['name'])
-        self.assertEqual(reservation.customer_phone_number, self.customer_data['phone_number'])
-        self.assertEqual(reservation.customer_gender, self.customer_data['gender'])
+    def test_create_category(self):
+        response = self.client.post('/categories/', self.category_data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Category.objects.count(), 2)
 
-    def test_create_reservation_missing_required_field(self):
-        # 필수 필드 누락 테스트 (예: customer_name)
-        invalid_data = self.reservation_data.copy()
-        invalid_data.pop('customer_name')
-        response = self.client.post(reverse('service:reservation-list'), data=invalid_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    def test_get_category(self):
+        response = self.client.get(f'/categories/{self.category.id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['name'], self.category.name)
 
-    def test_create_reservation_invalid_designer(self):
-        # 잘못된 디자이너 (다른 매장에 속한 디자이너) 테스트
-        another_store = Store.objects.create(name="Another Store", address="456 Another St", ceo=self.ceo)
-        another_user = User.objects.create_user(
-            username='anotherstaff',
-            password='testpassword',
-            birthday=date(1993, 3, 3),
-            phone="010-3333-3333"
-        )
-        another_staff = StoreStaff.objects.create(store=another_store, user=another_user, role='designer')
+    def test_update_category(self):
+        updated_data = self.category_data.copy()
+        updated_data['name'] = 'Updated Category'
+        response = self.client.put(f'/categories/{self.category.id}/', updated_data, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.category.refresh_from_db()
+        self.assertEqual(self.category.name, 'Updated Category')
 
-        invalid_data = self.reservation_data.copy()
-        invalid_data['assigned_designer'] = another_staff.id
-        response = self.client.post(reverse('service:reservation-list'), data=invalid_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("The assigned designer must be from the same store as the service.", str(response.data))
+    def test_delete_category(self):
+        response = self.client.delete(f'/categories/{self.category.id}/')
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(Category.objects.count(), 0)

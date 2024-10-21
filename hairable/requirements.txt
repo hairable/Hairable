@@ -19,6 +19,7 @@ distro==1.9.0
 Django==4.2
 django-cors-headers==4.4.0
 django-extensions==3.2.3
+django-model-utils==5.0.0
 django-seed==0.3.1
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
@@ -40,6 +41,7 @@ matplotlib-inline==0.1.7
 mdurl==0.1.2
 multidict==6.1.0
 mysqlclient==2.2.4
+numpy==2.1.1
 openai==0.28.0
 parso==0.8.4
 pathtools==0.1.2

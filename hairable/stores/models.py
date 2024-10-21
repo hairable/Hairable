@@ -43,47 +43,34 @@ class Category(models.Model):
 
 
 class WorkCalendar(models.Model):
-    staff = models.ForeignKey(User, on_delete=models.CASCADE, related_name='work_calendar')
+    staff = models.ForeignKey(StoreStaff, on_delete=models.CASCADE, related_name='work_calendar')
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='work_calendar')
-    date = models.DateField()  # 근무일
-    start_time = models.TimeField()  # 근무 시작 시간
-    end_time = models.TimeField()  # 근무 종료 시간
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
     status = models.CharField(max_length=10, choices=[('working', '근무 중'), ('off', '휴무')], default='working')
 
     class Meta:
-        unique_together = ['staff', 'date']  # 특정 직원의 날짜별로 중복 입력 금지
+        unique_together = ['store', 'staff', 'date']
 
-    def clean(self): #주석 : 종료 시간이 시작 시간보다 늦어야 함
+    def clean(self):
         if self.start_time >= self.end_time:
             raise ValidationError("종료 시간은 시작 시간보다 늦어야 합니다.")
-        
+    
     def save(self, *args, **kwargs):
-        # 직원이 같은 날짜에 이미 등록된 근무 상태가 있을 경우 기존 것을 삭제 후 새로 저장
-        WorkCalendar.objects.filter(staff=self.staff, date=self.date).exclude(id=self.id).delete()
+        # 저장하기 전에 해당 직원이 실제로 이 스토어에 속해있는지 확인
+        if not StoreStaff.objects.filter(store=self.store, user_id=self.staff.user_id).exists():
+            raise ValidationError("이 직원은 해당 스토어에 속해있지 않습니다.")
         super().save(*args, **kwargs)
+        self.update_store_calendar()
+
+    def update_store_calendar(self):
+        from django.db.models import Count
+        store_calendar = WorkCalendar.objects.filter(store=self.store, date=self.date).aggregate(
+            total_working=Count('id', filter=models.Q(status='working')),
+            total_off=Count('id', filter=models.Q(status='off'))
+        )
+        # 여기서 store_calendar 정보를 사용하여 필요한 작업을 수행할 수 있습니다.
 
     def __str__(self):
-        return f"{self.staff.username} - {self.date} ({self.status})"
-
-
-class ManagementCalendar(models.Model):
-    store = models.ForeignKey(Store, on_delete=models.CASCADE)
-    date = models.DateField()
-    total_working = models.IntegerField(default=0)
-    total_off = models.IntegerField(default=0)
-    total_substitute = models.IntegerField(default=0) # 대체 근무 인원
-
-    class Meta: # 주석 : 매장과 날짜별로 중복 입력 금지
-        unique_together = ['store', 'date']
-
-    def update_calendar(self):
-        # 근무 중인 직원과 휴무 중인 직원의 수를 계산하여 캘린더에 반영
-        working_count = WorkCalendar.objects.filter(store=self.store, date=self.date, status='working').count()
-        off_count = WorkCalendar.objects.filter(store=self.store, date=self.date, status='off').count()
-
-        self.total_staff_working = working_count
-        self.total_staff_off = off_count
-        self.save()
-
-    def __str__(self): #주석 : 매장 이름과 날짜를 반환
-        return f"{self.store.name} - {self.date}"
+        return f"{self.staff.user.username} - {self.date} ({self.status})"
