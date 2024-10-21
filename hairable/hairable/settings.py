@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'django_seed',
     'model_utils',
+    'corsheaders',
     # local_apps
     'accounts',
     'inventory',
