@@ -101,6 +101,7 @@ class Customer(models.Model):
     membership_status = models.CharField(max_length=20, choices=[('일반 고객', '일반 고객'), ('멤버십 가입 고객', '멤버십 가입 고객')], default='일반 고객')
     reservation_count = models.IntegerField(default=0)
     notes = models.TextField(blank=True)
+    is_membership = models.BooleanField(default=False)
 
 # 매출 보고서 모델
 class SalesReport(models.Model):

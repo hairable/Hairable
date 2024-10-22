@@ -11,10 +11,10 @@ from django.db.models import Q
 from django.db.models import Sum
 from django.utils.dateparse import parse_date
 from django.db import transaction
-from django.db.models.functions import TruncMonth, TruncHour, TruncDay
+from django.db.models.functions import TruncMonth, TruncDay
 import calendar
 from django.db.models import F
-
+from decimal import Decimal
 
 
 logger = logging.getLogger(__name__)
@@ -143,7 +143,6 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
         return Response({'message': '예약이 성공적으로 수정되었습니다.'})
 
-
     @transaction.atomic
     def update_sales_report(self, reservation):
         try:
@@ -156,6 +155,9 @@ class ReservationViewSet(viewsets.ModelViewSet):
             )
 
             service_price = reservation.service.price
+            if reservation.customer.is_membership:
+                service_price *= Decimal('0.9')  # 10% 할인 적용
+
             inventory_cost = sum(item.inventory_item.cost * item.quantity for item in reservation.service.serviceinventory_set.all())
             
             report.total_revenue += service_price
@@ -179,6 +181,21 @@ class CustomerViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
+    def perform_update(self, serializer):
+        serializer.save()
 
 
 

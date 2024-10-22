@@ -140,6 +140,13 @@ class CustomerSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['reservation_count']
 
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        if 'is_membership' in validated_data:
+            instance.membership_status = '멤버십 가입 고객' if instance.is_membership else '일반 고객'
+            instance.save()
+        return instance
+
 
 class SalesReportSerializer(serializers.ModelSerializer):
     class Meta:
