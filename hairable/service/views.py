@@ -15,14 +15,17 @@ from django.db.models.functions import TruncMonth, TruncDay
 import calendar
 from django.db.models import F
 from decimal import Decimal
-
+from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO
 
 logger = logging.getLogger(__name__)
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsStoreManagerOrCEO()]
+        return [IsAuthenticated(), IsStoreStaff()]
     
     def create(self, request, *args, **kwargs):
         category_id = request.data.get('category')
@@ -53,7 +56,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStoreStaff]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -172,7 +175,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStoreStaff]
     
     def list(self, request, *args, **kwargs):
         query = request.query_params.get('query', '')
@@ -204,7 +207,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class SalesReportViewSet(viewsets.ModelViewSet):
     queryset = SalesReport.objects.all()
     serializer_class = SalesReportSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStoreManagerOrCEO]
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
@@ -254,4 +257,7 @@ class SalesReportViewSet(viewsets.ModelViewSet):
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsStoreManagerOrCEO()]
+        return [IsAuthenticated(), IsStoreStaff()]

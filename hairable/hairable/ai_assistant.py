@@ -11,10 +11,11 @@ import re
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
+from accounts.permissions import IsStoreCEO
 
 class AIAssistantView(APIView):
     authentication_classes = [JWTAuthentication]  # JWT 인증 사용
-    permission_classes = [IsAuthenticated]  # 인증된 사용자만 접근 가능
+    permission_classes = [IsAuthenticated, IsStoreCEO]  # 인증된 사용자만 접근 가능
 
     def post(self, request):
         openai.api_key = OPENAI_API_KEY

@@ -72,7 +72,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
-        profile = instance.profile
+        profile, created = Profile.objects.get_or_create(user=instance)
 
         # 회원 정보 수정 반영
         instance.email = validated_data.get('email', instance.email)
@@ -80,15 +80,16 @@ class UserDetailSerializer(serializers.ModelSerializer):
         instance.gender = validated_data.get('gender', instance.gender)
         instance.save()
 
-        # 프로필 수정 (position은 수정하지 않음)
-        profile.store = profile_data.get('store', profile.store)
-        profile.profile_image = profile_data.get('profile_image', profile.profile_image)
-        profile.introduction = profile_data.get('introduction', profile.introduction)
-        profile.specialty = profile_data.get('specialty', profile.specialty)
-        profile.work_status = profile_data.get('work_status', profile.work_status)
-        profile.career_list = profile_data.get('career_list', profile.career_list)
-        profile.certificate_list = profile_data.get('certificate_list', profile.certificate_list)
-        profile.save()
+        # 프로필 수정
+        if profile_data:
+            profile.store = profile_data.get('store', profile.store)
+            profile.profile_image = profile_data.get('profile_image', profile.profile_image)
+            profile.introduction = profile_data.get('introduction', profile.introduction)
+            profile.specialty = profile_data.get('specialty', profile.specialty)
+            profile.work_status = profile_data.get('work_status', profile.work_status)
+            profile.career_list = profile_data.get('career_list', profile.career_list)
+            profile.certificate_list = profile_data.get('certificate_list', profile.certificate_list)
+            profile.save()
 
         return instance
 

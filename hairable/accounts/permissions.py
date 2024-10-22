@@ -1,23 +1,55 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+
+class AllowAny(BasePermission):
+    def has_permission(self, request, view):
+        return True
+
+class IsAuthenticated(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated
+
+class IsOwnerOrReadOnly(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+        return obj == request.user
 
 class IsCEO(BasePermission):
     def has_permission(self, request, view):
-        # CEO 권한을 확인하거나 AI Assistant가 특정 작업을 수행할 수 있도록 허용
         is_ceo = request.user and request.user.role == 'CEO'
-        
-        # AI Assistant의 요청일 경우 확인
-        is_ai_assistant = request.headers.get('User-Agent') == 'AIAssistant' or request.user.is_staff  # AI가 직원으로 등록된 경우 허용
-
+        is_ai_assistant = request.headers.get('User-Agent') == 'AIAssistant' or request.user.is_staff
         return is_ceo or is_ai_assistant
     
     def has_object_permission(self, request, view, obj):
         if hasattr(obj, 'ceo'):
-            return obj.ceo == request.user or request.user.is_staff  # AI는 Staff 권한으로 매장 데이터 접근 허용
-        return False  # 주석: CEO와 관련 없는 객체에 대해서는 권한 거부
-    
+            return obj.ceo == request.user or request.user.is_staff
+        return False
+
 class IsAnyCEO(BasePermission):
     def has_permission(self, request, view):
-        # 모든 CEO는 스토어를 생성할 수 있도록 허용하거나 AI 요청일 경우 허용
         is_ceo = request.user and request.user.role == 'CEO'
         is_ai_assistant = request.headers.get('User-Agent') == 'AIAssistant' or request.user.is_staff
         return is_ceo or is_ai_assistant
+
+class IsManager(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.role == 'manager'
+
+class IsDesigner(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.role == 'designer'
+
+class IsStoreStaff(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.staff_roles.exists()
+
+    def has_object_permission(self, request, view, obj):
+        return request.user.staff_roles.filter(store=obj.store).exists()
+
+class IsStoreManagerOrCEO(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return request.user.staff_roles.filter(store=obj.store, role__in=['manager', 'CEO']).exists()
+
+class IsStoreCEO(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.store.ceo == request.user

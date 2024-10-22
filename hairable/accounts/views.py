@@ -16,6 +16,10 @@ from .utils import send_verification_email
 from rest_framework.decorators import api_view
 from django.utils.encoding import force_str
 import re
+from .models import Profile
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .permissions import IsOwnerOrReadOnly
+
 # Create your views here.
 User = get_user_model()
 
@@ -23,6 +27,12 @@ User = get_user_model()
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+    
 
     def perform_create(self, serializer):
         user = serializer.save()
@@ -39,7 +49,7 @@ class UserListCreateView(generics.ListCreateAPIView):
         return Response(response_data, status=201)
 
 class UserUpdateDeleteAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_object(self):
         return self.request.user
@@ -64,11 +74,13 @@ class UserUpdateDeleteAPIView(APIView):
     
 # 자신의 프로필 Profile 조회(GET) 및 수정(PUT)
 class ProfileAPIView(generics.RetrieveUpdateAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     serializer_class = UserDetailSerializer
     
     def get_object(self):
-        return self.request.user
+        user = self.request.user
+        Profile.objects.get_or_create(user=user)
+        return user
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', True)
@@ -76,10 +88,6 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-
-        if getattr(instance, '_prefetched_objects_cache', None):
-            instance._prefetched_objects_cache = {}
-
         return Response(serializer.data)
     
 # 다른 사용자의 프로필 조회 

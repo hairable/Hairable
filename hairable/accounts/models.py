@@ -6,7 +6,7 @@ from django.conf import settings
 class User(AbstractUser):
     gender_choices = [("M", "남성"), ("F", "여성")]
     username = models.CharField(max_length=30, unique=True)
-    email = models.EmailField() # unique=True 테스트가 끝나면 넣어둘것
+    email = models.EmailField(unique=True)
     phoneNumberRegex = RegexValidator(regex=r'^01[016789]-?\d{3,4}-?\d{4}$', message="유효한 한국 전화번호를 입력하세요.")
     phone = models.CharField(validators=[phoneNumberRegex], max_length=16, unique=True)
     birthday = models.DateField()

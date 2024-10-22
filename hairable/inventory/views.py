@@ -4,16 +4,25 @@ from rest_framework.response import Response
 from .models import Category, InventoryItem
 from .serializers import CategorySerializer, InventoryItemDetailSerializer, InventoryItemUpdateSerializer
 from rest_framework.permissions import IsAuthenticated  # 인증된 사용자만 접근 가능하도록 추가
+from accounts.permissions import IsStoreManagerOrCEO, IsStoreStaff
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsStoreManagerOrCEO()]
+        return [IsAuthenticated(), IsStoreStaff()]
+
 
 class InventoryItemViewSet(viewsets.ModelViewSet):
     queryset = InventoryItem.objects.all()
     serializer_class = InventoryItemDetailSerializer
-    permission_classes = [IsAuthenticated] 
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsStoreManagerOrCEO()]
+        return [IsAuthenticated(), IsStoreStaff()]
 
     def get_queryset(self):
         queryset = InventoryItem.objects.all()
