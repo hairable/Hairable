@@ -47,7 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
             birthday=validated_data.get('birthday'),
             gender=validated_data.get('gender'),
             introduction=validated_data.get('introduction'),
-            is_active=True,  # 계정을 비활성화 상태로 저장, 이메일 인증 후 활성화
+            is_active=False,  # 계정을 비활성화 상태로 저장, 이메일 인증 후 활성화
             role=validated_data.get('role'),
         )
         
