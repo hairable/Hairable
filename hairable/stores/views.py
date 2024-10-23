@@ -18,6 +18,7 @@ import logging
 from django.db.models import Q
 from dateutil import parser
 from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO, IsStoreCEO
+from django.http import Http404
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -31,9 +32,17 @@ class StoreViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsAnyCEO()]
         elif self.action in ['update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsStoreCEO()]
-        elif self.action == 'list':
+        elif self.action in ['list', 'retrieve']:
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsStoreStaff()]
+        
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'CEO':
+            return Store.objects.filter(ceo=user)
+        elif hasattr(user, 'staff_roles'):
+            return Store.objects.filter(store_staff__user=user)
+        return Store.objects.none()
     
     def create(self, request, *args, **kwargs):
         # POST 메서드를 처리하도록 create 메서드를 명시적으로 정의
@@ -73,6 +82,22 @@ class StoreViewSet(viewsets.ModelViewSet):
         staff = get_object_or_404(StoreStaff, pk=staff_pk, store=store)
         staff.delete()
         return Response({'message': '직원이 성공적으로 삭제되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
+    
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            store_id = instance.id
+            ceo_id = instance.ceo.id
+            self.perform_destroy(instance)
+            return Response({
+                'message': '스토어가 성공적으로 삭제되었습니다.',
+                'store_id': store_id,
+                'ceo_id': ceo_id
+            }, status=status.HTTP_204_NO_CONTENT)
+        except Http404:
+            return Response({'error': '스토어를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class StoreStaffViewSet(viewsets.ModelViewSet):
     queryset = StoreStaff.objects.all()

@@ -78,7 +78,7 @@ class AIAssistantView(APIView):
                     {"role": "system", "content": context},
                     {"role": "user", "content": user_query}
                 ],
-                max_tokens=200,
+                max_tokens=2000,
                 temperature=0.7,
             )
             response_content = response.choices[0].message['content']

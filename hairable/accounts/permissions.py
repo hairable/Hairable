@@ -52,4 +52,4 @@ class IsStoreManagerOrCEO(BasePermission):
 
 class IsStoreCEO(BasePermission):
     def has_object_permission(self, request, view, obj):
-        return obj.store.ceo == request.user
+        return obj.ceo == request.user
