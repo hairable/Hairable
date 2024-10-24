@@ -60,7 +60,10 @@ DEBUG = False
 
 ALLOWED_HOSTS = ["3.38.213.199",
                 "localhost",
-                "127.0.0.1",]
+                "127.0.0.1",
+                "hairable.co.kr",
+                "www.hairable.co.kr",
+                ]
 
 
 # Application definition

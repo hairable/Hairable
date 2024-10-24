@@ -77,33 +77,32 @@ class ServiceSerializer(serializers.ModelSerializer):
 class ReservationSerializer(serializers.ModelSerializer):
     customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all(), required=False)
     service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())
-    assigned_designer = serializers.PrimaryKeyRelatedField(queryset=StoreStaff.objects.all())
+    assigned_designer = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = Reservation
         fields = '__all__'
 
     def validate(self, attrs):
-        assigned_designer = attrs.get('assigned_designer')
+        assigned_designer_user = attrs.get('assigned_designer')
         service = attrs.get('service')
 
-        # user ID를 기준으로 StoreStaff에서 해당 사용자가 해당 매장에 등록되었는지 확인
-        try:
-            # assigned_designer는 User 인스턴스이므로, 이를 StoreStaff에서 user_id로 확인
-            store_staff = StoreStaff.objects.get(user_id=assigned_designer.id, store=service.store)
-        except StoreStaff.DoesNotExist:
-            raise serializers.ValidationError("지정된 디자이너는 해당 매장에서 등록되지 않은 상태입니다.")
+        if assigned_designer_user:
+            try:
+                store_staff = StoreStaff.objects.get(user=assigned_designer_user, store=service.store)
+            except StoreStaff.DoesNotExist:
+                raise serializers.ValidationError("지정된 디자이너는 해당 매장에서 등록되지 않은 상태입니다.")
 
-        # 해당 디자이너가 요청된 서비스를 제공할 수 있는지 확인
-        if not store_staff.available_services.filter(id=service.id).exists():
-            raise serializers.ValidationError("지정된 디자이너는 선택한 서비스를 제공하지 않습니다.")
+            if not store_staff.available_services.filter(id=service.id).exists():
+                raise serializers.ValidationError("지정된 디자이너는 선택한 서비스를 제공하지 않습니다.")
 
-        # attrs에 변경된 store_staff를 할당
-        attrs['assigned_designer'] = store_staff
+            attrs['assigned_designer'] = store_staff
 
         return attrs
-
-
 
     def create(self, validated_data):
         customer_name = validated_data.pop('customer_name', None)
@@ -127,7 +126,8 @@ class ReservationSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['assigned_designer'] = instance.assigned_designer.user.id if instance.assigned_designer else None
+        if instance.assigned_designer:
+            rep['assigned_designer'] = instance.assigned_designer.user.id
         return rep
 
 

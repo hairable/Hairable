@@ -15,17 +15,55 @@ from django.db.models.functions import TruncMonth, TruncDay
 import calendar
 from django.db.models import F
 from decimal import Decimal
-from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO
+from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO, IsStoreManagerOrCEO2
+from rest_framework.exceptions import PermissionDenied
 
 logger = logging.getLogger(__name__)
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
+    
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO()]
-        return [IsAuthenticated(), IsStoreStaff()]
+            return [IsAuthenticated(), IsStoreManagerOrCEO2()]
+        return [IsAuthenticated()]
+        
+    def retrieve(self, request, *args, **kwargs):
+        logger.info(f"User {request.user} is attempting to retrieve service")
+        logger.info(f"User roles: {request.user.staff_roles.all()}")
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error retrieving service: {str(e)}")
+            raise
+            
+    def check_permissions(self, request):
+        for permission in self.get_permissions():
+            if not permission.has_permission(request, self):
+                self.permission_denied(
+                    request,
+                    message=getattr(permission, 'message', None),
+                    code=getattr(permission, 'code', None)
+                )
+
+    def check_object_permissions(self, request, obj):
+        for permission in self.get_permissions():
+            if not permission.has_object_permission(request, self, obj):
+                self.permission_denied(
+                    request,
+                    message=getattr(permission, 'message', None),
+                    code=getattr(permission, 'code', None)
+                )
+
+    def permission_denied(self, request, message=None, code=None):
+        if message is None:
+            message = "You do not have permission to perform this action."
+        data = {
+            'detail': message,
+            'code': code or 'permission_denied'
+        }
+        raise PermissionDenied(detail=data)
     
     def create(self, request, *args, **kwargs):
         category_id = request.data.get('category')
@@ -51,12 +89,30 @@ class ServiceViewSet(viewsets.ModelViewSet):
         service.available_designers.set(store_staff)
 
         return response
-
-
+        
+    def update(self, request, *args, **kwargs):
+        logger.info(f"User {request.user} is attempting to update service")
+        logger.info(f"User roles: {request.user.staff_roles.all()}")
+        logger.info(f"User permissions: {request.user.get_all_permissions()}")
+        try:
+            return super().update(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error updating service: {str(e)}")
+            raise
+    
+    def destroy(self, request, *args, **kwargs):
+        logger.info(f"User {request.user} is attempting to delete service")
+        logger.info(f"User roles: {request.user.staff_roles.all()}")
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error deleting service: {str(e)}")
+            raise
+            
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer
-    permission_classes = [IsAuthenticated, IsStoreStaff]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -260,4 +316,12 @@ class CategoryViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsStoreManagerOrCEO()]
-        return [IsAuthenticated(), IsStoreStaff()]
+        return [IsAuthenticated()]
+        
+    def update(self, request, *args, **kwargs):
+        logger.info(f"User {request.user} is attempting to update category")
+        try:
+            return super().update(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error updating category: {str(e)}")
+            raise
