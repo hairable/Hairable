@@ -36,13 +36,13 @@ class StoreViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsStoreStaff()]
         
-    def get_queryset(self):
-        user = self.request.user
-        if user.role == 'CEO':
-            return Store.objects.filter(ceo=user)
-        elif hasattr(user, 'staff_roles'):
-            return Store.objects.filter(store_staff__user=user)
-        return Store.objects.none()
+#    def get_queryset(self):
+ #       user = self.request.user
+  #      if user.role == 'CEO':
+   #         return Store.objects.filter(ceo=user)
+    #    elif hasattr(user, 'staff_roles'):
+     #       return Store.objects.filter(store_staff__user=user)
+      #  return Store.objects.none()
     
     def create(self, request, *args, **kwargs):
         # POST 메서드를 처리하도록 create 메서드를 명시적으로 정의

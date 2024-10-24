@@ -22,7 +22,7 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsStoreManagerOrCEO()]
-        return [IsAuthenticated(), IsStoreStaff()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         queryset = InventoryItem.objects.all()

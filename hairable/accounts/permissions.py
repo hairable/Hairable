@@ -41,14 +41,43 @@ class IsDesigner(BasePermission):
 
 class IsStoreStaff(BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.staff_roles.exists()
+        return request.user and (request.user.staff_roles.exists() or request.user.stores.exists())
 
     def has_object_permission(self, request, view, obj):
-        return request.user.staff_roles.filter(store=obj.store).exists()
+        if hasattr(obj, 'store'):
+            return (
+                request.user.staff_roles.filter(store=obj.store).exists() or 
+                obj.store.ceo == request.user
+            )
+        elif hasattr(obj, 'ceo'):
+            return (
+                request.user.staff_roles.filter(store=obj).exists() or 
+                obj.ceo == request.user
+            )
+        return False
 
 class IsStoreManagerOrCEO(BasePermission):
     def has_object_permission(self, request, view, obj):
-        return request.user.staff_roles.filter(store=obj.store, role__in=['manager', 'CEO']).exists()
+        if hasattr(obj, 'store'):
+            return request.user.staff_roles.filter(store=obj.store, role__in=['manager', 'CEO']).exists()
+        return request.user.role == 'CEO'
+    
+    
+class IsStoreManagerOrCEO2(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.role == 'CEO':
+            return True
+        return request.user.staff_roles.filter(role='manager').exists()
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == 'CEO':
+            if hasattr(obj, 'store'):
+                return obj.store.ceo == request.user
+            elif hasattr(obj, 'ceo'):
+                return obj.ceo == request.user
+        elif hasattr(obj, 'store'):
+            return request.user.staff_roles.filter(store=obj.store, role='manager').exists()
+        return False
 
 class IsStoreCEO(BasePermission):
     def has_object_permission(self, request, view, obj):
