@@ -1,5 +1,6 @@
 # 10조 Hariable
-![alt text](image-1.png)
+![image](https://github.com/user-attachments/assets/b106af4e-1970-4e50-b2b1-7f1a82f21ea6)
+
 
 # 매장 관리를 위한 웹 애플리케이션
 Hariable는 매장 운영자들이 AI비서를 통해 매장 운영에 관련한 정보들을 대화 형식으로 확인하여 쉽게 매장을 관리할 수 있는 간단한 웹 애플리케이션입니다. 이 프로젝트는 Django 프레임워크를 기반으로 개발되었습니다.
@@ -73,10 +74,12 @@ Hariable는 매장 운영자들이 AI비서를 통해 매장 운영에 관련한
 
 ## 📊 서비스 구조
 
-![alt text](image-2.png)
+![image](https://github.com/user-attachments/assets/4a4a0aa4-04af-4e3c-8589-894cce4353ed)
+
 
 ## 📝 와이어프레임
-![alt text](image-3.png)
+![image](https://github.com/user-attachments/assets/25f451f4-2dde-48ce-b72a-b58bdc3f6409)
+
 
 ## 📄 API 명세서
 
