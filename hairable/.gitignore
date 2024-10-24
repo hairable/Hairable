@@ -323,4 +323,4 @@ $RECYCLE.BIN/
 *.lnk
 config.py
 .vscode
-# End of https://www.toptal.com/developers/gitignore/api/windows,macos,python,django
+# End of https://www.toptal.com/developers/gitignore/api/windows,macos,python,django*.pyc
