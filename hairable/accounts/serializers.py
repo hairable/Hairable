@@ -17,6 +17,11 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = ('store_name', 'profile_image', 'introduction', 'specialty', 'work_status', 'career_list', 'certificate_list', 'position')  # 추가 필드 포함
 
+class PublicProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ('profile_image', 'introduction', 'career_list', 'certificate_list')  # 추가 필드 포함
+
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(required=False)  # 프로필을 선택적으로 연결, required=False 사용

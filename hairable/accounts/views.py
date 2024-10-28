@@ -1,24 +1,28 @@
-from django.contrib.auth import get_user_model
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
-from rest_framework.permissions import IsAuthenticated
-from .serializers import UserSerializer, UserDetailSerializer, ResetPasswordEmailRequestSerializer, ResetPasswordConfirmSerializer, ChangePasswordSerializer
-from rest_framework import generics
+import re
+from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.urls import reverse
+from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes
-from django.contrib.auth.tokens import default_token_generator # 이메일 인증을 위한 토큰 생성
-from .utils import send_verification_email
+from rest_framework import generics, status
 from rest_framework.decorators import api_view
-from django.utils.encoding import force_str
-import re
-from .models import Profile
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from .models import Profile
 from .permissions import IsOwnerOrReadOnly
+from .serializers import (
+    UserSerializer,
+    UserDetailSerializer,
+    ResetPasswordEmailRequestSerializer,
+    ResetPasswordConfirmSerializer,
+    ChangePasswordSerializer,
+    PublicProfileSerializer
+)
+from .utils import send_verification_email
+
 
 # Create your views here.
 User = get_user_model()
@@ -49,7 +53,7 @@ class UserListCreateView(generics.ListCreateAPIView):
         return Response(response_data, status=201)
 
 class UserUpdateDeleteAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         return self.request.user
@@ -74,7 +78,7 @@ class UserUpdateDeleteAPIView(APIView):
     
 # 자신의 프로필 Profile 조회(GET) 및 수정(PUT)
 class ProfileAPIView(generics.RetrieveUpdateAPIView):
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated]
     serializer_class = UserDetailSerializer
     
     def get_object(self):
@@ -93,7 +97,7 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
 # 다른 사용자의 프로필 조회 
 class UserProfileAPIView(generics.RetrieveAPIView):
     queryset = User.objects.all()
-    serializer_class = UserDetailSerializer
+    serializer_class = PublicProfileSerializer
     permission_classes = [IsAuthenticated]  # 로그인된 회원만 접근 가능
 
 # 로그인 API

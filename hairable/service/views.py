@@ -1,22 +1,26 @@
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from .models import Service, Reservation, Customer, SalesReport, Category
-from .serializers import ServiceSerializer, ReservationSerializer, CustomerSerializer, SalesReportSerializer, CategorySerializer
-from stores.models import Store, StoreStaff, WorkCalendar
-from dateutil import parser
 import logging
-from django.db.models import Q
-from django.db.models import Sum
-from django.utils.dateparse import parse_date
-from django.db import transaction
-from django.db.models.functions import TruncMonth, TruncDay
 import calendar
-from django.db.models import F
+from dateutil import parser
 from decimal import Decimal
-from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO, IsStoreManagerOrCEO2
+from django.db import transaction
+from django.db.models import Q, Sum, F
+from django.db.models.functions import TruncMonth, TruncDay
+from django.utils.dateparse import parse_date
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Service, Reservation, Customer, SalesReport, Category
+from .serializers import (
+    ServiceSerializer, 
+    ReservationSerializer, 
+    CustomerSerializer, 
+    SalesReportSerializer, 
+    CategorySerializer
+)
+from stores.models import Store, StoreStaff, WorkCalendar
+from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO, IsStoreManagerOrCEO2
 
 logger = logging.getLogger(__name__)
 

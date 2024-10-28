@@ -1,24 +1,30 @@
+import logging
+from calendar import monthrange
+from datetime import datetime
+from django.contrib.auth import get_user_model
+from django.db import models
+from django.db.models import Count, Q
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from dateutil import parser
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from .models import Store, StoreStaff, WorkCalendar
-from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer
-from accounts.permissions import IsCEO, IsAnyCEO
-from django.shortcuts import get_object_or_404
+from accounts.permissions import (
+    IsAnyCEO,
+    IsCEO,
+    IsStoreCEO,
+    IsStoreManagerOrCEO,
+    IsStoreStaff
+)
 from service.models import Service
-from django.contrib.auth import get_user_model
-from datetime import datetime
-from django.db.models import Count
-from rest_framework.decorators import action
-from rest_framework import status
-from calendar import monthrange
-from django.db import models
-import logging
-from django.db.models import Q
-from dateutil import parser
-from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO, IsStoreCEO
-from django.http import Http404
+from .models import Store, StoreStaff, WorkCalendar
+from .serializers import (
+    StoreSerializer,
+    StoreStaffSerializer,
+    WorkCalendarSerializer
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)

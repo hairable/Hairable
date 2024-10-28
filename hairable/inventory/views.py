@@ -1,9 +1,10 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Category, InventoryItem
 from .serializers import CategorySerializer, InventoryItemDetailSerializer, InventoryItemUpdateSerializer
-from rest_framework.permissions import IsAuthenticated  # 인증된 사용자만 접근 가능하도록 추가
 from accounts.permissions import IsStoreManagerOrCEO, IsStoreStaff
 
 class CategoryViewSet(viewsets.ModelViewSet):
