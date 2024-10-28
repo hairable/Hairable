@@ -19,7 +19,7 @@ class ServiceDesigner(models.Model):
 
 # 서비스 모델
 class Service(models.Model):
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)  # 서비스의 카테고리
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, help_text="서비스의 카테고리")
     name = models.CharField(max_length=100)  # 서비스 이름
     price = models.DecimalField(max_digits=10, decimal_places=2)  # 서비스 가격
     duration = models.DurationField()  # 서비스 소요 시간
@@ -34,7 +34,12 @@ class Service(models.Model):
 
 # 예약 모델
 class Reservation(models.Model):
-    customer_name = models.CharField(max_length=255, blank=True, null=True)
+    """_summary_
+
+    Args:
+        models (_type_): _description_
+    """
+    customer_name = models.CharField(max_length=255, blank=True, null=True, help_text="고객 이름")
     customer_phone_number = models.CharField(max_length=15, blank=True, null=True)
     customer_gender = models.CharField(max_length=1, choices=[('M', '남'), ('F', '여')], blank=True, null=True)
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE)

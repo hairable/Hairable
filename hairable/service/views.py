@@ -229,6 +229,14 @@ class ReservationViewSet(viewsets.ModelViewSet):
             raise
 
 class CustomerViewSet(viewsets.ModelViewSet):
+    """_summary_
+
+    Args:
+        viewsets (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated, IsStoreStaff]
@@ -311,6 +319,14 @@ class SalesReportViewSet(viewsets.ModelViewSet):
 
 # 카테고리 뷰셋 정의
 class CategoryViewSet(viewsets.ModelViewSet):
+    """_summary_
+
+    Args:
+        viewsets (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     def get_permissions(self):

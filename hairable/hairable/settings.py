@@ -26,8 +26,21 @@ SECRET_KEY = config.SECRET_KEY
 OPENAI_API_KEY = config.OPENAI_API_KEY
 # SECURITY WARNING: don't run with debug turned on in production!
 
-DEBUG = False
+DEBUG = os.environ.get('DJANGO_ENV', 'development') == 'development'
 
+# HTTPS 설정을 환경에 따라 분기
+if not DEBUG:  # 운영 환경
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+else:  # 개발 환경
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    
 # LOGGING = {
 #     'version': 1,
 #     'disable_existing_loggers': False,
@@ -204,11 +217,3 @@ EMAIL_HOST_USER = config.EMAIL_HOST_USER
 EMAIL_HOST_PASSWORD = config.EMAIL_HOST_PASSWORD
 DEFAULT_FROM_EMAIL = config.EMAIL_HOST_USER
 
-# https 관련 설정
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True

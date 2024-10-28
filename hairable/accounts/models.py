@@ -27,3 +27,5 @@ class Profile(models.Model):
     work_status = models.BooleanField(default=True)  # 근무 상태
     career_list = models.JSONField(default=list, blank=True)  # 경력 목록
     certificate_list = models.JSONField(default=list, blank=True)  # 자격증 목록
+    
+    

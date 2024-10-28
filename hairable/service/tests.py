@@ -1,7 +1,6 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 from .models import Service, Reservation, Customer, Category
-from .serializers import ServiceSerializer, ReservationSerializer, CustomerSerializer, CategorySerializer
 from stores.models import Store  # Store 모델 import
 from django.contrib.auth.models import User
 
