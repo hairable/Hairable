@@ -14,6 +14,9 @@ class User(AbstractUser):
     introduction = models.TextField(null=True, blank=True)
     ROLE_CHOICES = (
         ('CEO', '대표'),
+        ('manager', '매니저'),
+        ('designer', '디자이너'),
+        ('staff', '직원'),
         ('user', '일반회원'),
     )
     role = models.CharField(max_length=50, choices=ROLE_CHOICES)

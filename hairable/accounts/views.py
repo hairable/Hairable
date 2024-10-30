@@ -12,12 +12,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Profile
-from .permissions import IsOwnerOrReadOnly
 from .serializers import (
     UserSerializer,
     UserDetailSerializer,
     ResetPasswordEmailRequestSerializer,
-    ResetPasswordConfirmSerializer,
     ChangePasswordSerializer,
     PublicProfileSerializer
 )
@@ -51,7 +49,31 @@ class UserListCreateView(generics.ListCreateAPIView):
         response_data["refresh"] = str(refresh)
 
         return Response(response_data, status=201)
+    
+@api_view(['GET'])
+def verify_email(request, uidb64, token):
+    try:
+        # uidb64를 디코딩하여 사용자의 pk 가져오기
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+        
+        verification_link = request.build_absolute_uri(
+        reverse('accounts:verify_email', kwargs={'uidb64': uid, 'token': token})
+    )
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
 
+    if user is not None and default_token_generator.check_token(user, token):
+        if not user.is_active:
+            # 계정 활성화 처리
+            user.is_active = True
+            user.save()
+            return Response({'message': '이메일 인증이 완료되었습니다.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': '계정이 이미 활성화되었습니다.'}, status=status.HTTP_200_OK)
+    else:
+        return Response({'error': '유효하지 않은 링크입니다.'}, status=status.HTTP_400_BAD_REQUEST)
+    
 class UserUpdateDeleteAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -140,8 +162,6 @@ class FindUsernameAPIView(APIView):
     
 # POST: 분실시 비밀번호 이메일 인증 요청, PUT: 인증 완료 후 새 비밀번호로 변경
 class ResetPasswordAPIView(APIView):
-
-    # 이메일로 비밀번호 재설정 링크 전송 (POST 요청)
     def post(self, request):
         serializer = ResetPasswordEmailRequestSerializer(data=request.data)
         if serializer.is_valid():
@@ -151,7 +171,7 @@ class ResetPasswordAPIView(APIView):
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
                 token = default_token_generator.make_token(user)
                 reset_link = request.build_absolute_uri(
-                    reverse('accounts:password_reset_confirm', kwargs={'uidb64': uid, 'token': token})  # 네임스페이스 추가
+                    reverse('accounts:password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
                 )
                 send_mail(
                     '비밀번호 재설정',  
@@ -223,27 +243,3 @@ class LogoutAPIView(APIView):
             return Response({"message": "성공적으로 로그아웃되었습니다."}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response({"error": "로그아웃 실패. 유효하지 않은 토큰입니다."}, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['GET'])
-def verify_email(request, uidb64, token):
-    try:
-        # uidb64를 디코딩하여 사용자의 pk 가져오기
-        uid = force_str(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(pk=uid)
-        
-        verification_link = request.build_absolute_uri(
-        reverse('accounts:verify_email', kwargs={'uidb64': uid, 'token': token})
-    )
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        user = None
-
-    if user is not None and default_token_generator.check_token(user, token):
-        if not user.is_active:
-            # 계정 활성화 처리
-            user.is_active = True
-            user.save()
-            return Response({'message': '이메일 인증이 완료되었습니다.'}, status=status.HTTP_200_OK)
-        else:
-            return Response({'message': '계정이 이미 활성화되었습니다.'}, status=status.HTTP_200_OK)
-    else:
-        return Response({'error': '유효하지 않은 링크입니다.'}, status=status.HTTP_400_BAD_REQUEST)

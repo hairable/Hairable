@@ -28,18 +28,24 @@ class UserSerializer(serializers.ModelSerializer):
     workplace = serializers.CharField(source='profile.store.name', read_only=True)  # 근무지 추가
     position = serializers.CharField(source='profile.specialty', read_only=True)  # 직급(매장 내 직급) 추가
     work_status = serializers.BooleanField(source='profile.work_status', read_only=True)  # 근무 상태 추가
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    password_confirm = serializers.CharField(write_only=True) 
+    password = serializers.CharField(validators=[validate_password])
+    password_confirm = serializers.CharField() 
     class Meta:
         model = User
         fields = ("username", "email", "password", "password_confirm", "phone", "birthday", "gender", "introduction", "role", 'profile', 'workplace', 'position', 'work_status')
         extra_kwargs = {
-            'password': {'write_only': True}
+            'password': {'write_only': True},
+            'password_confirm': {'write_only': True}
         }
     def validate(self, data):
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError("비밀번호가 일치하지 않습니다.")
         return data
+    
+    def validate_role(self, value):
+        if value not in ['CEO', 'user']:
+            raise serializers.ValidationError("회원가입 시에는 'CEO' 또는 'user' 역할만 선택할 수 있습니다.")
+        return value
     
     def create(self, validated_data):
         profile_data = validated_data.pop('profile', None)  # profile_data가 없을 경우 None으로 처리
