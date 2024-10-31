@@ -28,15 +28,11 @@ class UserSerializer(serializers.ModelSerializer):
     workplace = serializers.CharField(source='profile.store.name', read_only=True)  # 근무지 추가
     position = serializers.CharField(source='profile.specialty', read_only=True)  # 직급(매장 내 직급) 추가
     work_status = serializers.BooleanField(source='profile.work_status', read_only=True)  # 근무 상태 추가
-    password = serializers.CharField(validators=[validate_password])
-    password_confirm = serializers.CharField() 
+    password = serializers.CharField(validators=[validate_password], write_only = True)
+    password_confirm = serializers.CharField(write_only = True) 
     class Meta:
         model = User
         fields = ("username", "email", "password", "password_confirm", "phone", "birthday", "gender", "introduction", "role", 'profile', 'workplace', 'position', 'work_status')
-        extra_kwargs = {
-            'password': {'write_only': True},
-            'password_confirm': {'write_only': True}
-        }
     def validate(self, data):
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError("비밀번호가 일치하지 않습니다.")
@@ -48,7 +44,7 @@ class UserSerializer(serializers.ModelSerializer):
         return value
     
     def create(self, validated_data):
-        profile_data = validated_data.pop('profile', None)  # profile_data가 없을 경우 None으로 처리
+        profile_data = validated_data.pop('profile', None)
         validated_data.pop('password_confirm')
         user = User.objects.create_user(
             username=validated_data.get('username'),
@@ -58,11 +54,10 @@ class UserSerializer(serializers.ModelSerializer):
             birthday=validated_data.get('birthday'),
             gender=validated_data.get('gender'),
             introduction=validated_data.get('introduction'),
-            is_active=False,  # 계정을 비활성화 상태로 저장, 이메일 인증 후 활성화
+            is_active=False,
             role=validated_data.get('role'),
         )
         
-        # 프로필 데이터가 있을 경우에만 생성
         if profile_data:
             Profile.objects.create(user=user, **profile_data)
         
@@ -71,11 +66,11 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserDetailSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer()
-    workplace = serializers.CharField(source='profile.store.name', read_only=True)  # 근무지 추가
-    position = serializers.CharField(source='profile.specialty', read_only=True)  # 직급 정보 추가
-    work_status = serializers.BooleanField(source='profile.work_status', read_only=True)  # 근무 상태 추가
-    career_list = serializers.ListField(source='profile.career_list', read_only=True)  # 경력 목록 추가
-    certificate_list = serializers.ListField(source='profile.certificate_list', read_only=True)  # 자격증 목록 추가
+    workplace = serializers.CharField(source='profile.store.name', read_only=True) 
+    position = serializers.CharField(source='profile.specialty', read_only=True) 
+    work_status = serializers.BooleanField(source='profile.work_status', read_only=True)
+    career_list = serializers.ListField(source='profile.career_list', read_only=True)
+    certificate_list = serializers.ListField(source='profile.certificate_list', read_only=True)
 
     class Meta:
         model = User
@@ -85,13 +80,12 @@ class UserDetailSerializer(serializers.ModelSerializer):
         profile_data = validated_data.pop('profile', {})
         profile, created = Profile.objects.get_or_create(user=instance)
 
-        # 회원 정보 수정 반영
+
         instance.email = validated_data.get('email', instance.email)
         instance.phone = validated_data.get('phone', instance.phone)
         instance.gender = validated_data.get('gender', instance.gender)
         instance.save()
 
-        # 프로필 수정
         if profile_data:
             profile.store = profile_data.get('store', profile.store)
             profile.profile_image = profile_data.get('profile_image', profile.profile_image)
@@ -106,7 +100,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 
 
-# 비밀번호 재설정 이메일 요청
+
 class ResetPasswordEmailRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -115,7 +109,7 @@ class ResetPasswordEmailRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("등록된 이메일이 없습니다.")
         return value
     
-# 비밀번호 재설정을 처리
+
 class ResetPasswordConfirmSerializer(serializers.Serializer):
     uidb64 = serializers.CharField()
     token = serializers.CharField()
@@ -125,7 +119,7 @@ class ResetPasswordConfirmSerializer(serializers.Serializer):
         if len(value) < 8 or not re.search(r'[0-9]', value) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
             raise serializers.ValidationError("비밀번호는 최소 8자 이상이어야 하며, 숫자와 특수 문자를 포함해야 합니다.")
         return value
-# 비밀 번호 변경
+
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, validators=[validate_password])  # 주석: 비밀번호 유효성 검사 추가

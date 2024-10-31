@@ -20,7 +20,7 @@ from .serializers import (
     CategorySerializer
 )
 from stores.models import Store, StoreStaff, WorkCalendar
-from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO, IsStoreManagerOrCEO2
+from accounts.permissions import UserRolePermission
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO2()]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager")]
         return [IsAuthenticated()]
         
     def retrieve(self, request, *args, **kwargs):
@@ -116,7 +116,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, UserRolePermission("CEO", "manager","designer")]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -233,17 +233,9 @@ class ReservationViewSet(viewsets.ModelViewSet):
             raise
 
 class CustomerViewSet(viewsets.ModelViewSet):
-    """_summary_
-
-    Args:
-        viewsets (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
-    permission_classes = [IsAuthenticated, IsStoreStaff]
+    permission_classes = [IsAuthenticated, UserRolePermission("CEO", "manager","designer")]
     
     def list(self, request, *args, **kwargs):
         query = request.query_params.get('query', '')
@@ -275,7 +267,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class SalesReportViewSet(viewsets.ModelViewSet):
     queryset = SalesReport.objects.all()
     serializer_class = SalesReportSerializer
-    permission_classes = [IsAuthenticated, IsStoreManagerOrCEO]
+    permission_classes = [IsAuthenticated, UserRolePermission("CEO", "manager")]
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
@@ -323,19 +315,11 @@ class SalesReportViewSet(viewsets.ModelViewSet):
 
 # 카테고리 뷰셋 정의
 class CategoryViewSet(viewsets.ModelViewSet):
-    """_summary_
-
-    Args:
-        viewsets (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO()]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager")]
         return [IsAuthenticated()]
         
     def update(self, request, *args, **kwargs):

@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Category, InventoryItem
 from .serializers import CategorySerializer, InventoryItemDetailSerializer, InventoryItemUpdateSerializer
-from accounts.permissions import IsStoreManagerOrCEO, IsStoreStaff
+from accounts.permissions import UserRolePermission
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -13,8 +13,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO()]
-        return [IsAuthenticated(), IsStoreStaff()]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager")]
+        return [IsAuthenticated(), UserRolePermission("CEO", "manager","designer")]
 
 
 class InventoryItemViewSet(viewsets.ModelViewSet):
@@ -22,7 +22,7 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
     serializer_class = InventoryItemDetailSerializer
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO()]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager")]
         return [IsAuthenticated()]
 
     def get_queryset(self):
