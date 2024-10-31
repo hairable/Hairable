@@ -19,19 +19,16 @@ class UserRolePermission(BasePermission):
         self.allowed_roles = self._cached_roles[role_key]
 
     def has_permission(self, request, view):
-        is_ai_assistant = request.headers.get('User-Agent') == 'AIAssistant'
-        if view.action == 'create':
-            return bool(
-                request.user and
-                request.user.is_authenticated and
-                (request.user.role == "CEO" or request.user.is_staff or is_ai_assistant)
-            )
-
-        return bool(
-            request.user and
-            request.user.is_authenticated and
-            (request.user.role in self.allowed_roles or request.user.is_staff or is_ai_assistant)
-        )
+        # 사용자가 인증되어 있는지 확인
+        if not request.user.is_authenticated:
+            return False
+            
+        # view에서 지정한 required_role과 사용자의 role이 일치하는지 확인
+        required_role = getattr(view, 'required_role', None)
+        if required_role is None:
+            return True
+            
+        return request.user.role == required_role
 
     def has_object_permission(self, request, view, obj):
         is_ai_assistant = request.headers.get('User-Agent') == 'AIAssistant'

@@ -20,7 +20,7 @@ from .serializers import (
     CategorySerializer
 )
 from stores.models import Store, StoreStaff, WorkCalendar
-from accounts.permissions import UserRolePermission
+from utils.permissions import UserRolePermission
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Category, InventoryItem
 from .serializers import CategorySerializer, InventoryItemDetailSerializer, InventoryItemUpdateSerializer
-from accounts.permissions import UserRolePermission
+from utils.permissions import UserRolePermission
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()

@@ -19,7 +19,7 @@ from .serializers import (
     ChangePasswordSerializer,
     PublicProfileSerializer
 )
-from .utils import send_verification_email
+from utils.email_verification import send_verification_email
 
 
 # Create your views here.

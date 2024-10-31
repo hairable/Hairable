@@ -11,7 +11,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from accounts.permissions import UserRolePermission
+from utils.permissions import UserRolePermission
 from service.models import Service
 from .models import Store, StoreStaff, WorkCalendar
 from .serializers import (
