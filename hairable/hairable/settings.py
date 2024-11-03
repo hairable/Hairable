@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     'inventory',
     'stores',
     'service',
+    'utils',
 ]
 
 MIDDLEWARE = [

@@ -1,24 +1,24 @@
+import logging
+from calendar import monthrange
+from datetime import datetime
+from django.contrib.auth import get_user_model
+from django.db import models
+from django.db.models import Count, Q
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from dateutil import parser
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from .models import Store, StoreStaff, WorkCalendar
-from .serializers import StoreSerializer, StoreStaffSerializer, WorkCalendarSerializer
-from accounts.permissions import IsCEO, IsAnyCEO
-from django.shortcuts import get_object_or_404
+from utils.permissions import UserRolePermission
 from service.models import Service
-from django.contrib.auth import get_user_model
-from datetime import datetime
-from django.db.models import Count
-from rest_framework.decorators import action
-from rest_framework import status
-from calendar import monthrange
-from django.db import models
-import logging
-from django.db.models import Q
-from dateutil import parser
-from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO, IsStoreCEO
-from django.http import Http404
+from .models import Store, StoreStaff, WorkCalendar
+from .serializers import (
+    StoreSerializer,
+    StoreStaffSerializer,
+    WorkCalendarSerializer
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -29,12 +29,12 @@ class StoreViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action == 'create':
-            return [IsAuthenticated(), IsAnyCEO()]
+            return [IsAuthenticated(), UserRolePermission("CEO")]
         elif self.action in ['update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsStoreCEO()]
+            return [IsAuthenticated(), UserRolePermission("CEO")]
         elif self.action in ['list', 'retrieve']:
             return [IsAuthenticated()]
-        return [IsAuthenticated(), IsStoreStaff()]
+        return [IsAuthenticated(), UserRolePermission("CEO", "manager","designer")]
 
     
     def create(self, request, *args, **kwargs):
@@ -49,7 +49,7 @@ class StoreViewSet(viewsets.ModelViewSet):
         # 스토어 생성 시 현재 사용자(CEO)를 연결
         serializer.save(ceo=self.request.user)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsCEO])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, UserRolePermission("CEO")])
     def add_staff(self, request, pk=None):
         # 직원 추가 메서드
         store = self.get_object()
@@ -68,7 +68,7 @@ class StoreViewSet(viewsets.ModelViewSet):
 
         return Response({'message': '직원이 성공적으로 추가되었습니다.'}, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated, IsCEO])
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated, UserRolePermission("CEO")])
     def remove_staff(self, request, pk=None, staff_pk=None):
         # 직원 삭제 메서드
         store = self.get_object()
@@ -98,12 +98,12 @@ class StoreStaffViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['create', 'destroy']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO()]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager")]
         elif self.action in ['update', 'partial_update']:
             if 'role' in self.request.data:
-                return [IsAuthenticated(), IsStoreCEO()]
-            return [IsAuthenticated(), IsStoreManagerOrCEO()]
-        return [IsAuthenticated(), IsStoreStaff()]
+                return [IsAuthenticated(), UserRolePermission("CEO")]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager")]
+        return [IsAuthenticated(), UserRolePermission("CEO", "manager","designer")]
 
     def get_object(self):
         store_id = self.kwargs.get('store_id')
@@ -157,8 +157,8 @@ class WorkCalendarViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO()]
-        return [IsAuthenticated(), IsStoreStaff()]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager","designer")]
+        return [IsAuthenticated(), UserRolePermission("CEO", "manager","designer")]
 
     def get_queryset(self):
         store_id = self.kwargs.get('store_id')

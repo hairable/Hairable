@@ -61,16 +61,15 @@ class WorkCalendar(models.Model):
         # 저장하기 전에 해당 직원이 실제로 이 스토어에 속해있는지 확인
         if not StoreStaff.objects.filter(store=self.store, user_id=self.staff.user_id).exists():
             raise ValidationError("이 직원은 해당 스토어에 속해있지 않습니다.")
+        
         super().save(*args, **kwargs)
-        self.update_store_calendar()
-
-    def update_store_calendar(self):
+        
+        # 저장 후 store_calendar 정보 업데이트
         from django.db.models import Count
         store_calendar = WorkCalendar.objects.filter(store=self.store, date=self.date).aggregate(
             total_working=Count('id', filter=models.Q(status='working')),
             total_off=Count('id', filter=models.Q(status='off'))
         )
-        # 여기서 store_calendar 정보를 사용하여 필요한 작업을 수행할 수 있습니다.
 
     def __str__(self):
         return f"{self.staff.user.username} - {self.date} ({self.status})"
