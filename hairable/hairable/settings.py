@@ -179,9 +179,26 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
 }
+# 기존 세션 설정에 추가
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 7200  # 2시간
 SESSION_SAVE_EVERY_REQUEST = True
+
+# 프로덕션 환경에서 필요한 추가 설정
+SESSION_COOKIE_SECURE = True  # HTTPS에서만 쿠키 전송
+SESSION_COOKIE_HTTPONLY = True  # JavaScript에서 쿠키 접근 방지
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF 보호
+SESSION_COOKIE_DOMAIN = '.hairable.co.kr'  # 도메인 설정
+
+# CSRF 설정
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_DOMAIN = '.hairable.co.kr'
+CSRF_TRUSTED_ORIGINS = [
+    'https://hairable.co.kr',
+    'https://www.hairable.co.kr',
+]
 
 SIMPLE_JWT = {
 'ACCESS_TOKEN_LIFETIME': timedelta(minutes=120),
