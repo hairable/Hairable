@@ -1,22 +1,26 @@
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from .models import Service, Reservation, Customer, SalesReport, Category
-from .serializers import ServiceSerializer, ReservationSerializer, CustomerSerializer, SalesReportSerializer, CategorySerializer
-from stores.models import Store, StoreStaff, WorkCalendar
-from dateutil import parser
 import logging
-from django.db.models import Q
-from django.db.models import Sum
-from django.utils.dateparse import parse_date
-from django.db import transaction
-from django.db.models.functions import TruncMonth, TruncDay
 import calendar
-from django.db.models import F
+from dateutil import parser
 from decimal import Decimal
-from accounts.permissions import IsStoreStaff, IsStoreManagerOrCEO, IsStoreManagerOrCEO2
+from django.db import transaction
+from django.db.models import Q, Sum, F
+from django.db.models.functions import TruncMonth, TruncDay
+from django.utils.dateparse import parse_date
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Service, Reservation, Customer, SalesReport, Category
+from .serializers import (
+    ServiceSerializer, 
+    ReservationSerializer, 
+    CustomerSerializer, 
+    SalesReportSerializer, 
+    CategorySerializer
+)
+from stores.models import Store, StoreStaff, WorkCalendar
+from utils.permissions import UserRolePermission
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +30,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO2()]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager")]
         return [IsAuthenticated()]
         
     def retrieve(self, request, *args, **kwargs):
@@ -112,7 +116,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, UserRolePermission("CEO", "manager","designer")]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -231,7 +235,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
-    permission_classes = [IsAuthenticated, IsStoreStaff]
+    permission_classes = [IsAuthenticated, UserRolePermission("CEO", "manager","designer")]
     
     def list(self, request, *args, **kwargs):
         query = request.query_params.get('query', '')
@@ -263,7 +267,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class SalesReportViewSet(viewsets.ModelViewSet):
     queryset = SalesReport.objects.all()
     serializer_class = SalesReportSerializer
-    permission_classes = [IsAuthenticated, IsStoreManagerOrCEO]
+    permission_classes = [IsAuthenticated, UserRolePermission("CEO", "manager")]
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
@@ -315,7 +319,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsStoreManagerOrCEO()]
+            return [IsAuthenticated(), UserRolePermission("CEO", "manager")]
         return [IsAuthenticated()]
         
     def update(self, request, *args, **kwargs):

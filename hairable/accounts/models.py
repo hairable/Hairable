@@ -14,6 +14,8 @@ class User(AbstractUser):
     introduction = models.TextField(null=True, blank=True)
     ROLE_CHOICES = (
         ('CEO', '대표'),
+        ('manager', '매니저'),
+        ('designer', '디자이너'),
         ('user', '일반회원'),
     )
     role = models.CharField(max_length=50, choices=ROLE_CHOICES)
@@ -27,3 +29,5 @@ class Profile(models.Model):
     work_status = models.BooleanField(default=True)  # 근무 상태
     career_list = models.JSONField(default=list, blank=True)  # 경력 목록
     certificate_list = models.JSONField(default=list, blank=True)  # 자격증 목록
+    
+    

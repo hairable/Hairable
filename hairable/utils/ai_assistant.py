@@ -2,7 +2,7 @@ import openai
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .config import OPENAI_API_KEY
+from hairable.config import OPENAI_API_KEY
 from service.models import Reservation, Service
 from stores.models import Store, StoreStaff
 from inventory.models import InventoryItem  # 추가된 재고 모델 import
@@ -11,12 +11,13 @@ import re
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
-from accounts.permissions import IsStoreCEO
+from .permissions import UserRolePermission
 
 class AIAssistantView(APIView):
-    authentication_classes = [JWTAuthentication]  # JWT 인증 사용
-    permission_classes = [IsAuthenticated, IsStoreCEO]  # 인증된 사용자만 접근 가능
-
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, UserRolePermission]
+    required_role = "CEO"
+    
     def post(self, request):
         openai.api_key = OPENAI_API_KEY
         user = request.user  # 로그인한 사용자 정보

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-from .ai_assistant import AIAssistantView
+from utils.ai_assistant import AIAssistantView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
