@@ -44,3 +44,4 @@ class UserRolePermission(BasePermission):
         if hasattr(obj, 'ceo'):
             return obj.ceo == request.user or request.user.is_staff or is_ai_assistant
         return False
+
